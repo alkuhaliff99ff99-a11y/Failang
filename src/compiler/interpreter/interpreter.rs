@@ -5,7 +5,6 @@ use crate::compiler::parser::{Expr, Stmt};
 use std::cell::RefCell;
 use std::rc::Rc;
 
-// استثناء مخصص للتحكم في الخروج السريع بقيمة الـ Return من الدوال
 #[derive(Debug)]
 pub struct ReturnException {
     pub value: Value,
@@ -74,7 +73,6 @@ impl Interpreter {
                     self.execute(body)?;
                 }
             }
-            // تسجيل الدالة في البيئة البرمجية الحالية
             Stmt::Function { name, params, body } => {
                 let param_names = params.iter().map(|p| p.lexeme.clone()).collect();
                 let function_value = Value::Function {
@@ -86,7 +84,6 @@ impl Interpreter {
                     .borrow_mut()
                     .define(name.lexeme.clone(), function_value);
             }
-            // قذف استثناء الإرجاع للخروج الفوري من الدالة
             Stmt::Return { value, .. } => {
                 let return_val = if let Some(expr) = value {
                     self.evaluate(expr)
@@ -195,33 +192,28 @@ impl Interpreter {
                     _ => Value::Nil,
                 }
             }
-            // تنفيذ استدعاء الدالة الفعلي وتمرير وسائطها
             Expr::Call {
                 callee, arguments, ..
             } => {
                 let callee_val = self.evaluate(callee);
 
                 if let Value::Function { params, body, .. } = callee_val {
-                    // حساب قيم الأرجيومنتس الممررة
                     let mut evaluated_args = Vec::new();
                     for arg in arguments {
                         evaluated_args.push(self.evaluate(arg));
                     }
 
-                    // إنشاء بيئة تشغيل معزولة للدالة
                     let previous = self.environment.clone();
                     let local_env = Rc::new(RefCell::new(Environment::new_with_enclosing(
                         previous.clone(),
                     )));
 
-                    // ربط المعاملات بالقيم الممررة داخل البيئة الجديدة
                     for (param, arg_val) in params.iter().zip(evaluated_args.iter()) {
                         local_env
                             .borrow_mut()
                             .define(param.clone(), arg_val.clone());
                     }
 
-                    // تبديل البيئة وتأمين التنفيذ والتقاط الـ Return
                     let mut interpreter_state = Interpreter {
                         environment: local_env,
                     };
@@ -235,6 +227,10 @@ impl Interpreter {
                 } else {
                     Value::Nil
                 }
+            }
+            // سد الثغرة البرمجية للـ Array رسمياً هنا صراحة داخل الـ match
+            Expr::Array { .. } => {
+                todo!("سيتم دعم حساب قيم المصفوفة في الجزء الثالث")
             }
         }
     }

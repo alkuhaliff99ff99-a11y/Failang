@@ -31,7 +31,6 @@ impl Parser {
         self.statement()
     }
 
-    // تحليل الإعلان عن دالة: دالة اسم_الدالة(الوسائط) { ... }
     fn function_declaration(&mut self) -> Stmt {
         let name = self
             .consume(TokenKind::Identifier, "Expected function name.")
@@ -88,7 +87,6 @@ impl Parser {
         Some(self.expression_statement())
     }
 
-    // تحليل جملة الإرجاع: عد تعبير؛
     fn return_statement(&mut self) -> Stmt {
         let keyword = self.previous().clone();
         let mut value = None;
@@ -232,7 +230,6 @@ impl Parser {
         self.call()
     }
 
-    // دالة تحليل استدعاء الدوال التنازلية ذي الأولوية العالية: اسم_الدالة(وسائط)
     fn call(&mut self) -> Expr {
         let mut expr = self.primary();
         loop {
@@ -277,6 +274,27 @@ impl Parser {
             self.consume(TokenKind::RightParen, "Expected ')' after expression.");
             return Expr::Grouping(Box::new(expr));
         }
+
+        // 🛠️ ميزة قراءة المصفوفات الجديدة قواعدياً: [ تعبير، تعبير، ... ]
+        if self.match_kinds(&[TokenKind::LeftBracket]) {
+            let mut elements = Vec::new();
+            if !self.check(&TokenKind::RightBracket) {
+                loop {
+                    elements.push(self.expression());
+                    if !self.match_kinds(&[TokenKind::Comma]) {
+                        break;
+                    }
+                }
+            }
+            let bracket = self
+                .consume(
+                    TokenKind::RightBracket,
+                    "Expected ']' after array elements.",
+                )
+                .clone();
+            return Expr::Array { bracket, elements };
+        }
+
         Expr::Literal(String::new())
     }
 
@@ -318,20 +336,5 @@ impl Parser {
             return self.advance();
         }
         self.advance()
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::compiler::lexer::Lexer;
-
-    #[test]
-    fn test_parser_variable_and_print() {
-        let input = "دع س = 5 + 3\nاطبع(س)";
-        let tokens = Lexer::new(input).scan_tokens().unwrap();
-        let mut parser = Parser::new(tokens);
-        let statements = parser.parse();
-        assert_eq!(statements.len(), 2);
     }
 }

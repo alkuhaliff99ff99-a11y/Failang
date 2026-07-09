@@ -2,11 +2,13 @@ use std::collections::HashMap;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum TokenKind {
-    // الرموز المفردة والمزدوجة السابقة
+    // الرموز المفردة والمزدوجة
     LeftParen,
     RightParen,
     LeftBrace,
     RightBrace,
+    LeftBracket,
+    RightBracket, // [ و ] الجديدة للمصفوفات
     Comma,
     Dot,
     Minus,
@@ -29,7 +31,7 @@ pub enum TokenKind {
     String,
     Number,
 
-    // الكلمات المفتاحية الحالية والجديدة
+    // الكلمات المفتاحية
     Let,
     If,
     Else,
@@ -37,8 +39,8 @@ pub enum TokenKind {
     Print,
     True,
     False,
-    Function, // دالة / fn
-    Return,   // عد / return
+    Function,
+    Return,
 
     EOF,
 }
@@ -62,7 +64,6 @@ pub struct Lexer {
 impl Lexer {
     pub fn new(source: &str) -> Self {
         let mut keywords = HashMap::new();
-        // الكلمات السابقة
         keywords.insert("دع".to_string(), TokenKind::Let);
         keywords.insert("let".to_string(), TokenKind::Let);
         keywords.insert("إذا".to_string(), TokenKind::If);
@@ -77,8 +78,6 @@ impl Lexer {
         keywords.insert("true".to_string(), TokenKind::True);
         keywords.insert("خطأ".to_string(), TokenKind::False);
         keywords.insert("false".to_string(), TokenKind::False);
-
-        // الكلمات المفتاحية الجديدة للدوال
         keywords.insert("دالة".to_string(), TokenKind::Function);
         keywords.insert("fn".to_string(), TokenKind::Function);
         keywords.insert("عد".to_string(), TokenKind::Return);
@@ -114,7 +113,9 @@ impl Lexer {
             ')' => self.add_token(TokenKind::RightParen),
             '{' => self.add_token(TokenKind::LeftBrace),
             '}' => self.add_token(TokenKind::RightBrace),
-            ',' => self.add_token(TokenKind::Comma),
+            '[' => self.add_token(TokenKind::LeftBracket), // التعرف على [
+            ']' => self.add_token(TokenKind::RightBracket), // التعرف على ]
+            ',' | '،' => self.add_token(TokenKind::Comma), // دعم الفاصلة العربية والإنجليزية
             '.' => self.add_token(TokenKind::Dot),
             '-' => self.add_token(TokenKind::Minus),
             '+' => self.add_token(TokenKind::Plus),
@@ -186,7 +187,7 @@ impl Lexer {
             self.advance();
         }
         if self.is_at_end() {
-            return Err(format!("نص غير مغلق بقوس اقتباس في السطر {}", self.line));
+            return Err(format!("نص غير مغلق في السطر {}", self.line));
         }
         self.advance();
         let value: String = self.source[self.start + 1..self.current - 1]
