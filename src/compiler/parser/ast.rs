@@ -14,11 +14,15 @@ pub enum Expr {
         right: Box<Expr>,
     },
     Grouping(Box<Expr>),
-    // عقدة استدعاء الدالة الجديدة (مثل: احسب(س، 5))
     Call {
-        callee: Box<Expr>,    // اسم الدالة أو التعبير المؤدي لها
-        paren: Token,         // قوس الإغلاق لتحديد مكان الخطأ إذا حدث
-        arguments: Vec<Expr>, // الوسائط الممررة
+        callee: Box<Expr>,
+        paren: Token,
+        arguments: Vec<Expr>,
+    },
+    // عقدة المصفوفة الجديدة التي تحتوي على عناصرها الداخلية كـ تعبيرات
+    Array {
+        bracket: Token,      // قوس الإغلاق ] لتحديد السطر عند حدوث خطأ قواعدي
+        elements: Vec<Expr>, // العناصر المخزنة بداخل المصفوفة
     },
 }
 
@@ -40,13 +44,11 @@ pub enum Stmt {
         initializer: Option<Expr>,
     },
     Print(Expr),
-    // عقدة تعريف الدالة الجديدة (مثل: دالة احسب(س) { ... })
     Function {
         name: Token,
-        params: Vec<Token>, // المتغيرات المستقبلة لها
-        body: Vec<Stmt>,    // الأكواد داخل جسم الدالة
+        params: Vec<Token>,
+        body: Vec<Stmt>,
     },
-    // جملة الإرجاع الجديدة (مثل: عد س + 1)
     Return {
         keyword: Token,
         value: Option<Expr>,
