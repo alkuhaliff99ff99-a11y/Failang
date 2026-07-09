@@ -1,0 +1,6 @@
+[package]
+name = "failang"
+version = "0.1.0"
+abbreviation = "FSL"
+file_extension = ".fsl"
+cli_tool = "fsl"
