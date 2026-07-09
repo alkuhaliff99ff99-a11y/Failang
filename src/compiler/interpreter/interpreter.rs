@@ -5,6 +5,12 @@ use crate::compiler::parser::{Expr, Stmt};
 use std::cell::RefCell;
 use std::rc::Rc;
 
+// استثناء مخصص للتحكم في الخروج السريع بقيمة الـ Return من الدوال
+#[derive(Debug)]
+pub struct ReturnException {
+    pub value: Value,
+}
+
 pub struct Interpreter {
     environment: Rc<RefCell<Environment>>,
 }
@@ -16,13 +22,14 @@ impl Interpreter {
         }
     }
 
-    pub fn interpret(&mut self, statements: &[Stmt]) {
+    pub fn interpret(&mut self, statements: &[Stmt]) -> Result<(), ReturnException> {
         for statement in statements {
-            self.execute(statement);
+            self.execute(statement)?;
         }
+        Ok(())
     }
 
-    fn execute(&mut self, stmt: &Stmt) {
+    fn execute(&mut self, stmt: &Stmt) -> Result<(), ReturnException> {
         match stmt {
             Stmt::Expression(expr) => {
                 self.evaluate(expr);
@@ -43,8 +50,9 @@ impl Interpreter {
                 )));
 
                 self.environment = local_env;
-                self.interpret(statements);
+                let result = self.interpret(statements);
                 self.environment = previous;
+                result?;
             }
             Stmt::Print(expr) => {
                 let value = self.evaluate(expr);
@@ -56,24 +64,39 @@ impl Interpreter {
                 else_branch,
             } => {
                 if self.is_truthy(&self.evaluate(condition)) {
-                    self.execute(then_branch);
+                    self.execute(then_branch)?;
                 } else if let Some(else_stmt) = else_branch {
-                    self.execute(else_stmt);
+                    self.execute(else_stmt)?;
                 }
             }
             Stmt::While { condition, body } => {
                 while self.is_truthy(&self.evaluate(condition)) {
-                    self.execute(body);
+                    self.execute(body)?;
                 }
             }
-            // سد ثغرة الدوال مؤقتاً في المفسر لتمرير الـ check
-            Stmt::Function { .. } => {
-                todo!()
+            // تسجيل الدالة في البيئة البرمجية الحالية
+            Stmt::Function { name, params, body } => {
+                let param_names = params.iter().map(|p| p.lexeme.clone()).collect();
+                let function_value = Value::Function {
+                    name: name.lexeme.clone(),
+                    params: param_names,
+                    body: body.clone(),
+                };
+                self.environment
+                    .borrow_mut()
+                    .define(name.lexeme.clone(), function_value);
             }
-            Stmt::Return { .. } => {
-                todo!()
+            // قذف استثناء الإرجاع للخروج الفوري من الدالة
+            Stmt::Return { value, .. } => {
+                let return_val = if let Some(expr) = value {
+                    self.evaluate(expr)
+                } else {
+                    Value::Nil
+                };
+                return Err(ReturnException { value: return_val });
             }
         }
+        Ok(())
     }
 
     fn is_truthy(&self, value: &Value) -> bool {
@@ -172,9 +195,46 @@ impl Interpreter {
                     _ => Value::Nil,
                 }
             }
-            // سد ثغرة استدعاء الدوال مؤقتاً في التعبيرات
-            Expr::Call { .. } => {
-                todo!()
+            // تنفيذ استدعاء الدالة الفعلي وتمرير وسائطها
+            Expr::Call {
+                callee, arguments, ..
+            } => {
+                let callee_val = self.evaluate(callee);
+
+                if let Value::Function { params, body, .. } = callee_val {
+                    // حساب قيم الأرجيومنتس الممررة
+                    let mut evaluated_args = Vec::new();
+                    for arg in arguments {
+                        evaluated_args.push(self.evaluate(arg));
+                    }
+
+                    // إنشاء بيئة تشغيل معزولة للدالة
+                    let previous = self.environment.clone();
+                    let local_env = Rc::new(RefCell::new(Environment::new_with_enclosing(
+                        previous.clone(),
+                    )));
+
+                    // ربط المعاملات بالقيم الممررة داخل البيئة الجديدة
+                    for (param, arg_val) in params.iter().zip(evaluated_args.iter()) {
+                        local_env
+                            .borrow_mut()
+                            .define(param.clone(), arg_val.clone());
+                    }
+
+                    // تبديل البيئة وتأمين التنفيذ والتقاط الـ Return
+                    let mut interpreter_state = Interpreter {
+                        environment: local_env,
+                    };
+                    let mut return_value = Value::Nil;
+
+                    if let Err(exception) = interpreter_state.interpret(&body) {
+                        return_value = exception.value;
+                    }
+
+                    return_value
+                } else {
+                    Value::Nil
+                }
             }
         }
     }

@@ -42,5 +42,5 @@ fn run_file(path: &str) {
 
     // 3. تشغيل الـ Interpreter لتنفيذ الأوامر فوراً على الشاشة!
     let mut interpreter = Interpreter::new();
-    interpreter.interpret(&statements);
+    let _ = interpreter.interpret(&statements);
 }
