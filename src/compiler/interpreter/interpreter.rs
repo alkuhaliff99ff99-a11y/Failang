@@ -1,24 +1,81 @@
+use super::environment::Environment;
 use super::value::Value;
 use crate::compiler::lexer::TokenKind;
-use crate::compiler::parser::Expr;
+use crate::compiler::parser::{Expr, Stmt};
+use std::cell::RefCell;
+use std::rc::Rc;
 
-pub struct Interpreter;
+pub struct Interpreter {
+    // استخدام Rc و RefCell لضمان إمكانية تعديل البيئة داخل النطاقات المتداخلة
+    environment: Rc<RefCell<Environment>>,
+}
 
 impl Interpreter {
     pub fn new() -> Self {
-        Self
+        Self {
+            environment: Rc::new(RefCell::new(Environment::new())),
+        }
     }
 
-    // الدالة الرئيسية لتقييم أي تعبير وإرجاع قيمته الحقيقية
+    // تفسير قائمة من الجمل (البرنامج بالكامل)
+    pub fn interpret(&mut self, statements: &[Stmt]) {
+        for statement in statements {
+            self.execute(statement);
+        }
+    }
+
+    // تنفيذ جملة واحدة (Statement)
+    fn execute(&mut self, stmt: &Stmt) {
+        match stmt {
+            Stmt::Expression(expr) => {
+                self.evaluate(expr);
+            }
+            Stmt::Var { name, initializer } => {
+                let mut value = Value::Nil;
+                if let Some(init_expr) = initializer {
+                    value = self.evaluate(init_expr);
+                }
+                // حفظ المتغير في البيئة الحالية
+                self.environment
+                    .borrow_mut()
+                    .define(name.lexeme.clone(), value);
+            }
+            Stmt::Block(statements) => {
+                // إنشاء بيئة جديدة متداخلة للنطاق المغلق { ... }
+                let previous = self.environment.clone();
+                let local_env = Rc::new(RefCell::new(Environment::new_with_enclosing(
+                    previous.clone(),
+                )));
+
+                self.environment = local_env;
+                self.interpret(statements);
+                // استعادة البيئة السابقة بعد الخروج من النطاق
+                self.environment = previous;
+            }
+            Stmt::Print(expr) => {
+                let value = self.evaluate(expr);
+                println!("{}", value);
+            }
+            _ => {} // سيتم دعم بقية الجمل في الأجزاء القادمة
+        }
+    }
+
+    // تقييم التعبيرات واستخراج القيم
     pub fn evaluate(&self, expr: &Expr) -> Value {
         match expr {
             Expr::Literal(lexeme) => {
-                // محاولة تحويل النص إلى رقم، وإذا فشل يعتبر نصاً عادياً
                 if let Ok(num) = lexeme.parse::<f64>() {
                     Value::Number(num)
                 } else {
                     Value::String(lexeme.clone())
                 }
+            }
+            Expr::Variable(name) => {
+                // استدعاء قيمة المتغير من البيئة، وإذا لم يجدها يعود بـ Nil
+                self.environment
+                    .borrow()
+                    .get(&name.lexeme)
+                    .unwrap_or(Value::Nil)
             }
             Expr::Grouping(inner) => self.evaluate(inner),
             Expr::Unary { operator, right } => {
@@ -50,13 +107,12 @@ impl Interpreter {
                 let right_val = self.evaluate(right);
 
                 match operator.kind {
-                    // العمليات الحسابية
                     TokenKind::Plus => {
                         if let (Value::Number(l), Value::Number(r)) = (&left_val, &right_val) {
                             Value::Number(l + r)
                         } else if let (Value::String(l), Value::String(r)) = (&left_val, &right_val)
                         {
-                            Value::String(format!("{}{}", l, r)) // دمج النصوص!
+                            Value::String(format!("{}{}", l, r))
                         } else {
                             Value::Nil
                         }
@@ -82,8 +138,6 @@ impl Interpreter {
                             Value::Nil
                         }
                     }
-
-                    // المقارنات والتساوي
                     TokenKind::EqualEqual => Value::Boolean(left_val == right_val),
                     TokenKind::BangEqual => Value::Boolean(left_val != right_val),
                     TokenKind::Less => {
@@ -103,7 +157,6 @@ impl Interpreter {
                     _ => Value::Nil,
                 }
             }
-            _ => Value::Nil, // سيتم دعم المتغيرات في الجزء الثاني
         }
     }
 }
