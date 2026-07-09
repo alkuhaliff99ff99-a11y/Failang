@@ -1,1 +1,3 @@
-fn main() { println!("FSL - Failang toolchain"); }
+fn main() {
+    println!("FSL - Failang toolchain");
+}
