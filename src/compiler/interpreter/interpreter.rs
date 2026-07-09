@@ -6,7 +6,6 @@ use std::cell::RefCell;
 use std::rc::Rc;
 
 pub struct Interpreter {
-    // استخدام Rc و RefCell لضمان إمكانية تعديل البيئة داخل النطاقات المتداخلة
     environment: Rc<RefCell<Environment>>,
 }
 
@@ -17,14 +16,12 @@ impl Interpreter {
         }
     }
 
-    // تفسير قائمة من الجمل (البرنامج بالكامل)
     pub fn interpret(&mut self, statements: &[Stmt]) {
         for statement in statements {
             self.execute(statement);
         }
     }
 
-    // تنفيذ جملة واحدة (Statement)
     fn execute(&mut self, stmt: &Stmt) {
         match stmt {
             Stmt::Expression(expr) => {
@@ -35,13 +32,11 @@ impl Interpreter {
                 if let Some(init_expr) = initializer {
                     value = self.evaluate(init_expr);
                 }
-                // حفظ المتغير في البيئة الحالية
                 self.environment
                     .borrow_mut()
                     .define(name.lexeme.clone(), value);
             }
             Stmt::Block(statements) => {
-                // إنشاء بيئة جديدة متداخلة للنطاق المغلق { ... }
                 let previous = self.environment.clone();
                 let local_env = Rc::new(RefCell::new(Environment::new_with_enclosing(
                     previous.clone(),
@@ -49,18 +44,42 @@ impl Interpreter {
 
                 self.environment = local_env;
                 self.interpret(statements);
-                // استعادة البيئة السابقة بعد الخروج من النطاق
                 self.environment = previous;
             }
             Stmt::Print(expr) => {
                 let value = self.evaluate(expr);
                 println!("{}", value);
             }
-            _ => {} // سيتم دعم بقية الجمل في الأجزاء القادمة
+            // 1. تفسير جملة إذا / وإلا (If Statement)
+            Stmt::If {
+                condition,
+                then_branch,
+                else_branch,
+            } => {
+                if self.is_truthy(&self.evaluate(condition)) {
+                    self.execute(then_branch);
+                } else if let Some(else_stmt) = else_branch {
+                    self.execute(else_stmt);
+                }
+            }
+            // 2. تفسير حلقة طالما (While Loop)
+            Stmt::While { condition, body } => {
+                while self.is_truthy(&self.evaluate(condition)) {
+                    self.execute(body);
+                }
+            }
         }
     }
 
-    // تقييم التعبيرات واستخراج القيم
+    // دالة مساعدة لتحديد ما إذا كانت القيمة تعتبر "صحيحة منطقياً" أم لا
+    fn is_truthy(&self, value: &Value) -> bool {
+        match value {
+            Value::Nil => false,
+            Value::Boolean(b) => *b,
+            _ => true, // الأرقام والنصوص تعتبر true تلقائياً مثل اللغات الحديثة
+        }
+    }
+
     pub fn evaluate(&self, expr: &Expr) -> Value {
         match expr {
             Expr::Literal(lexeme) => {
@@ -70,13 +89,11 @@ impl Interpreter {
                     Value::String(lexeme.clone())
                 }
             }
-            Expr::Variable(name) => {
-                // استدعاء قيمة المتغير من البيئة، وإذا لم يجدها يعود بـ Nil
-                self.environment
-                    .borrow()
-                    .get(&name.lexeme)
-                    .unwrap_or(Value::Nil)
-            }
+            Expr::Variable(name) => self
+                .environment
+                .borrow()
+                .get(&name.lexeme)
+                .unwrap_or(Value::Nil),
             Expr::Grouping(inner) => self.evaluate(inner),
             Expr::Unary { operator, right } => {
                 let right_val = self.evaluate(right);
@@ -88,13 +105,7 @@ impl Interpreter {
                             Value::Nil
                         }
                     }
-                    TokenKind::Bang => {
-                        if let Value::Boolean(b) = right_val {
-                            Value::Boolean(!b)
-                        } else {
-                            Value::Nil
-                        }
-                    }
+                    TokenKind::Bang => Value::Boolean(!self.is_truthy(&right_val)),
                     _ => Value::Nil,
                 }
             }
