@@ -228,9 +228,13 @@ impl Interpreter {
                     Value::Nil
                 }
             }
-            // سد الثغرة البرمجية للـ Array رسمياً هنا صراحة داخل الـ match
-            Expr::Array { .. } => {
-                todo!("سيتم دعم حساب قيم المصفوفة في الجزء الثالث")
+            // 🛠️ تفعيل معالجة وحساب قيم المصفوفة الفعلي داخل المفسر
+            Expr::Array { elements, .. } => {
+                let mut evaluated_elements = Vec::new();
+                for element in elements {
+                    evaluated_elements.push(self.evaluate(element));
+                }
+                Value::Array(evaluated_elements)
             }
         }
     }
