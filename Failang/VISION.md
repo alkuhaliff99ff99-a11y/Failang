@@ -1,0 +1,3 @@
+# Vision
+
+Failang Documentation.

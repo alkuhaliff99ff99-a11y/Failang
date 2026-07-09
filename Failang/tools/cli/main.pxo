@@ -1,0 +1,27 @@
+from compiler.lexer.lexer import Lexer
+from compiler.parser.parser import Parser
+from vm.interpreter import Interpreter
+
+
+code = """
+
+دع الاسم = "Failang"
+
+اطبع الاسم
+
+"""
+
+
+lexer = Lexer(code)
+
+tokens = lexer.tokenize()
+
+
+parser = Parser(tokens)
+
+program = parser.parse()
+
+
+vm = Interpreter()
+
+vm.run(program"""Failang Module"""
