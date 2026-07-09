@@ -21,7 +21,6 @@ impl Parser {
         statements
     }
 
-    // فصل الإعلانات عن الجمل العادية لأولويات النطاق
     fn declaration(&mut self) -> Option<Stmt> {
         if self.match_kinds(&[TokenKind::Let]) {
             return self.var_declaration();
@@ -33,13 +32,10 @@ impl Parser {
         let name = self
             .consume(TokenKind::Identifier, "Expected variable name.")
             .clone();
-
         let mut initializer = None;
         if self.match_kinds(&[TokenKind::Equal]) {
             initializer = Some(self.expression());
         }
-
-        // دعم اختياري للفاصلة المنقوطة
         self.match_kinds(&[TokenKind::Semicolon]);
         Some(Stmt::Var { name, initializer })
     }
@@ -51,20 +47,33 @@ impl Parser {
         if self.match_kinds(&[TokenKind::While]) {
             return Some(self.while_statement());
         }
+        if self.match_kinds(&[TokenKind::Print]) {
+            return Some(self.print_statement());
+        }
         if self.match_kinds(&[TokenKind::LeftBrace]) {
             return Some(Stmt::Block(self.block_statement()));
         }
         Some(self.expression_statement())
     }
 
-    // تحليل جملة إذا / وإلا
+    // تحليل جملة الطباعة اطبع(...)
+    fn print_statement(&mut self) -> Stmt {
+        // دعم اختياري للأقواس حول جملة الطباعة مثل اطبع("مرحباً")
+        let has_paren = self.match_kinds(&[TokenKind::LeftParen]);
+        let value = self.expression();
+        if has_paren {
+            self.consume(TokenKind::RightParen, "Expected ')' after print value.");
+        }
+        self.match_kinds(&[TokenKind::Semicolon]);
+        Stmt::Print(value)
+    }
+
     fn if_statement(&mut self) -> Stmt {
         let condition = self.expression();
         let then_branch = Box::new(
             self.statement()
                 .unwrap_or(Stmt::Expression(Expr::Literal(String::new()))),
         );
-
         let mut else_branch = None;
         if self.match_kinds(&[TokenKind::Else]) {
             else_branch = Some(Box::new(
@@ -72,7 +81,6 @@ impl Parser {
                     .unwrap_or(Stmt::Expression(Expr::Literal(String::new()))),
             ));
         }
-
         Stmt::If {
             condition,
             then_branch,
@@ -80,7 +88,6 @@ impl Parser {
         }
     }
 
-    // تحليل حلقة طالما
     fn while_statement(&mut self) -> Stmt {
         let condition = self.expression();
         let body = Box::new(
@@ -90,7 +97,6 @@ impl Parser {
         Stmt::While { condition, body }
     }
 
-    // تحليل البلوكات المتداخلة { ... }
     fn block_statement(&mut self) -> Vec<Stmt> {
         let mut statements = Vec::new();
         while !self.check(&TokenKind::RightBrace) && !self.is_at_end() {
@@ -241,5 +247,40 @@ impl Parser {
             return self.advance();
         }
         self.advance()
+    }
+}
+
+// --- وحدة الاختبارات الآلية للتأكد من بناء شجرة الـ AST بنجاح ---
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::compiler::lexer::Lexer;
+
+    #[test]
+    fn test_parser_variable_and_print() {
+        let input = r#"
+        دع س = 5 + 3
+        اطبع(س)
+        "#;
+
+        let tokens = Lexer::new(input).scan_tokens().unwrap();
+        let mut parser = Parser::new(tokens);
+        let statements = parser.parse();
+
+        // يجب أن يحلل السطرين إلى جملتين؛ جملة إعلان متغير وجملة طباعة
+        assert_eq!(statements.len(), 2);
+
+        match &statements[0] {
+            Stmt::Var { name, initializer } => {
+                assert_eq!(name.lexeme, "س");
+                assert!(initializer.is_some());
+            }
+            _ => panic!("Expected a variable declaration statement"),
+        }
+
+        match &statements[1] {
+            Stmt::Print(_) => {}
+            _ => panic!("Expected a print statement"),
+        }
     }
 }
