@@ -50,7 +50,6 @@ impl Interpreter {
                 let value = self.evaluate(expr);
                 println!("{}", value);
             }
-            // 1. تفسير جملة إذا / وإلا (If Statement)
             Stmt::If {
                 condition,
                 then_branch,
@@ -62,21 +61,26 @@ impl Interpreter {
                     self.execute(else_stmt);
                 }
             }
-            // 2. تفسير حلقة طالما (While Loop)
             Stmt::While { condition, body } => {
                 while self.is_truthy(&self.evaluate(condition)) {
                     self.execute(body);
                 }
             }
+            // سد ثغرة الدوال مؤقتاً في المفسر لتمرير الـ check
+            Stmt::Function { .. } => {
+                todo!()
+            }
+            Stmt::Return { .. } => {
+                todo!()
+            }
         }
     }
 
-    // دالة مساعدة لتحديد ما إذا كانت القيمة تعتبر "صحيحة منطقياً" أم لا
     fn is_truthy(&self, value: &Value) -> bool {
         match value {
             Value::Nil => false,
             Value::Boolean(b) => *b,
-            _ => true, // الأرقام والنصوص تعتبر true تلقائياً مثل اللغات الحديثة
+            _ => true,
         }
     }
 
@@ -167,6 +171,10 @@ impl Interpreter {
                     }
                     _ => Value::Nil,
                 }
+            }
+            // سد ثغرة استدعاء الدوال مؤقتاً في التعبيرات
+            Expr::Call { .. } => {
+                todo!()
             }
         }
     }

@@ -14,6 +14,12 @@ pub enum Expr {
         right: Box<Expr>,
     },
     Grouping(Box<Expr>),
+    // عقدة استدعاء الدالة الجديدة (مثل: احسب(س، 5))
+    Call {
+        callee: Box<Expr>,    // اسم الدالة أو التعبير المؤدي لها
+        paren: Token,         // قوس الإغلاق لتحديد مكان الخطأ إذا حدث
+        arguments: Vec<Expr>, // الوسائط الممررة
+    },
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -33,6 +39,16 @@ pub enum Stmt {
         name: Token,
         initializer: Option<Expr>,
     },
-    // عقدة الطباعة الجديدة لـ Failang
     Print(Expr),
+    // عقدة تعريف الدالة الجديدة (مثل: دالة احسب(س) { ... })
+    Function {
+        name: Token,
+        params: Vec<Token>, // المتغيرات المستقبلة لها
+        body: Vec<Stmt>,    // الأكواد داخل جسم الدالة
+    },
+    // جملة الإرجاع الجديدة (مثل: عد س + 1)
+    Return {
+        keyword: Token,
+        value: Option<Expr>,
+    },
 }
