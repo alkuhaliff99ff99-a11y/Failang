@@ -86,7 +86,8 @@ impl Interpreter {
             }
             Stmt::Return { value, .. } => {
                 let return_val = if let Some(expr) = value {
-                    self.evaluate(expr)
+                    let v = self.evaluate(expr);
+                    v
                 } else {
                     Value::Nil
                 };

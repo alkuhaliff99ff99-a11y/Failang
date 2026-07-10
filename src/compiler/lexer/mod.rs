@@ -81,6 +81,7 @@ impl Lexer {
         keywords.insert("دالة".to_string(), TokenKind::Function);
         keywords.insert("fn".to_string(), TokenKind::Function);
         keywords.insert("عد".to_string(), TokenKind::Return);
+        keywords.insert("أرجع".to_string(), TokenKind::Return);
         keywords.insert("return".to_string(), TokenKind::Return);
 
         Self {
