@@ -22,12 +22,10 @@ impl Parser {
     }
 
     fn declaration(&mut self) -> Option<Stmt> {
-        // دعم صريح لـ دالة و fn
         if self.check(&TokenKind::Function) || self.peek().lexeme == "دالة" || self.peek().lexeme == "fn" {
             self.advance();
             return Some(self.function_declaration());
         }
-        // دعم صريح للمتغيرات
         if self.check(&TokenKind::Let) || self.check(&TokenKind::Var) || 
            self.peek().lexeme == "متغير" || self.peek().lexeme == "دع" || self.peek().lexeme == "let" {
             self.advance();
@@ -47,8 +45,6 @@ impl Parser {
             }
         }
         self.consume(TokenKind::RightParen, "Expected ')' after parameters.");
-        
-        // التحقق من القوس المفتوح { للكتلة البرمجية
         self.consume(TokenKind::LeftBrace, "Expected '{' before function body.");
         let body = self.block_statement();
         Stmt::Function { name, params, body }
@@ -108,11 +104,8 @@ impl Parser {
 
     fn if_statement(&mut self) -> Stmt {
         let condition = self.expression();
-        
-        // التحقق مما إذا كان هناك قوس بداية للكتلة، إن لم يكن، نستهلكه للاحتياط
         if self.check(&TokenKind::LeftBrace) { self.advance(); }
         let then_branch = Box::new(Stmt::Block(self.block_statement()));
-        
         let mut else_branch = None;
         if self.peek().lexeme == "والا" || self.peek().lexeme == "إلا" || self.check(&TokenKind::Else) {
             self.advance();
@@ -141,7 +134,7 @@ impl Parser {
     fn expression_statement(&mut self) -> Stmt {
         let expr = self.expression();
         self.match_kinds(&[TokenKind::Semicolon]);
-        Some(expr).map(Stmt::Expression).unwrap()
+        Stmt::Expression(expr)
     }
 
     fn expression(&mut self) -> Expr { self.assignment() }
@@ -273,6 +266,19 @@ impl Parser {
             let expr = self.expression();
             self.consume(TokenKind::RightParen, "Expected ')' after expression.");
             return Expr::Grouping(Box::new(expr));
+        }
+        if self.match_kinds(&[TokenKind::LeftBracket]) || self.peek().lexeme == "[" {
+            let bracket = if self.peek().lexeme == "[" { self.advance().clone() } else { self.previous().clone() };
+            let mut elements = Vec::new();
+            if !self.check(&TokenKind::RightBracket) && self.peek().lexeme != "]" {
+                loop {
+                    elements.push(self.expression());
+                    if !self.match_kinds(&[TokenKind::Comma]) && self.peek().lexeme != "," { break; }
+                    if self.peek().lexeme == "," { self.advance(); }
+                }
+            }
+            self.consume(TokenKind::RightBracket, "Expected ']' after array elements.");
+            return Expr::Array { elements, bracket };
         }
         Expr::Literal(String::new())
     }

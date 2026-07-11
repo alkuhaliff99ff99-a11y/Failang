@@ -84,7 +84,6 @@ impl Interpreter {
                     Some(expr) => self.evaluate(expr)?,
                     None => Value::Nil,
                 };
-                // تغليف القيمة مباشرة داخل إشارة نصية موحدة لمنع أخطاء الترميز
                 let encoded = match return_val {
                     Value::Number(n) => format!("NUM:{}", n),
                     Value::Boolean(b) => format!("BOOL:{}", b),
@@ -108,6 +107,13 @@ impl Interpreter {
                 Ok(Value::String(cleaned))
             }
             Expr::Variable(name) => self.environment.lock().unwrap().get(&name.lexeme),
+            Expr::Array { elements, .. } => {
+                let mut evaluated_elements = Vec::new();
+                for el in elements {
+                    evaluated_elements.push(self.evaluate(el)?);
+                }
+                Ok(Value::Array(evaluated_elements))
+            }
             Expr::Call { callee, arguments, .. } => {
                 let callee_val = self.evaluate(callee)?;
                 
