@@ -84,14 +84,15 @@ impl Interpreter {
                     Some(expr) => self.evaluate(expr)?,
                     None => Value::Nil,
                 };
-                // تشفير القيمة مع نوعها لضمان استعادتها بدقة مطلقة
-                match return_val {
-                    Value::Number(n) => return Err(format!("__RET_NUM__{}", n)),
-                    Value::Boolean(b) => return Err(format!("__RET_BOOL__{}", b)),
-                    Value::String(s) => return Err(format!("__RET_STR__{}", s)),
-                    Value::Nil => return Err("__RET_NIL__".to_string()),
-                    _ => return Err("__RET_NIL__".to_string()),
-                }
+                // تغليف القيمة مباشرة داخل إشارة نصية موحدة لمنع أخطاء الترميز
+                let encoded = match return_val {
+                    Value::Number(n) => format!("NUM:{}", n),
+                    Value::Boolean(b) => format!("BOOL:{}", b),
+                    Value::String(s) => format!("STR:{}", s),
+                    Value::Nil => "NIL:".to_string(),
+                    _ => "NIL:".to_string(),
+                };
+                return Err(format!("__RETURN_SIGNAL__{}", encoded));
             }
         }
         Ok(())
@@ -132,20 +133,20 @@ impl Interpreter {
                     let mut return_value = Value::Nil;
                     for statement in &body {
                         if let Err(e) = self.execute(statement) {
-                            if e.starts_with("__RET_NUM__") {
-                                let n: f64 = e.trim_start_matches("__RET_NUM__").parse().unwrap_or(0.0);
-                                return_value = Value::Number(n);
-                                break;
-                            } else if e.starts_with("__RET_BOOL__") {
-                                let b: bool = e.trim_start_matches("__RET_BOOL__").parse().unwrap_or(false);
-                                return_value = Value::Boolean(b);
-                                break;
-                            } else if e.starts_with("__RET_STR__") {
-                                let s = e.trim_start_matches("__RET_STR__").to_string();
-                                return_value = Value::String(s);
-                                break;
-                            } else if e == "__RET_NIL__" {
-                                return_value = Value::Nil;
+                            if e.starts_with("__RETURN_SIGNAL__") {
+                                let inner = e.trim_start_matches("__RETURN_SIGNAL__");
+                                if inner.starts_with("NUM:") {
+                                    let val = inner.trim_start_matches("NUM:").parse().unwrap_or(0.0);
+                                    return_value = Value::Number(val);
+                                } else if inner.starts_with("BOOL:") {
+                                    let val = inner.trim_start_matches("BOOL:").parse().unwrap_or(false);
+                                    return_value = Value::Boolean(val);
+                                } else if inner.starts_with("STR:") {
+                                    let val = inner.trim_start_matches("STR:").to_string();
+                                    return_value = Value::String(val);
+                                } else {
+                                    return_value = Value::Nil;
+                                }
                                 break;
                             } else {
                                 self.environment = previous;

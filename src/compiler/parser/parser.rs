@@ -22,10 +22,15 @@ impl Parser {
     }
 
     fn declaration(&mut self) -> Option<Stmt> {
-        if self.match_kinds(&[TokenKind::Function]) {
+        // دعم صريح لـ دالة و fn
+        if self.check(&TokenKind::Function) || self.peek().lexeme == "دالة" || self.peek().lexeme == "fn" {
+            self.advance();
             return Some(self.function_declaration());
         }
-        if self.match_kinds(&[TokenKind::Let, TokenKind::Const, TokenKind::Var]) {
+        // دعم صريح للمتغيرات
+        if self.check(&TokenKind::Let) || self.check(&TokenKind::Var) || 
+           self.peek().lexeme == "متغير" || self.peek().lexeme == "دع" || self.peek().lexeme == "let" {
+            self.advance();
             return self.var_declaration();
         }
         self.statement()
@@ -42,6 +47,8 @@ impl Parser {
             }
         }
         self.consume(TokenKind::RightParen, "Expected ')' after parameters.");
+        
+        // التحقق من القوس المفتوح { للكتلة البرمجية
         self.consume(TokenKind::LeftBrace, "Expected '{' before function body.");
         let body = self.block_statement();
         Stmt::Function { name, params, body }
@@ -50,7 +57,8 @@ impl Parser {
     fn var_declaration(&mut self) -> Option<Stmt> {
         let name = self.consume(TokenKind::Identifier, "Expected variable name.").clone();
         let mut initializer = None;
-        if self.match_kinds(&[TokenKind::Equal]) {
+        if self.match_kinds(&[TokenKind::Equal]) || self.peek().lexeme == "=" {
+            if self.peek().lexeme == "=" { self.advance(); }
             initializer = Some(self.expression());
         }
         self.match_kinds(&[TokenKind::Semicolon]);
@@ -58,11 +66,25 @@ impl Parser {
     }
 
     fn statement(&mut self) -> Option<Stmt> {
-        if self.match_kinds(&[TokenKind::If]) { return Some(self.if_statement()); }
-        if self.match_kinds(&[TokenKind::While]) { return Some(self.while_statement()); }
-        if self.match_kinds(&[TokenKind::Print]) { return Some(self.print_statement()); }
-        if self.match_kinds(&[TokenKind::Return]) { return Some(self.return_statement()); }
-        if self.match_kinds(&[TokenKind::LeftBrace]) { return Some(Stmt::Block(self.block_statement())); }
+        if self.check(&TokenKind::If) || self.peek().lexeme == "إذا" || self.peek().lexeme == "if" {
+            self.advance();
+            return Some(self.if_statement());
+        }
+        if self.check(&TokenKind::While) || self.peek().lexeme == "طالما" || self.peek().lexeme == "while" {
+            self.advance();
+            return Some(self.while_statement());
+        }
+        if self.check(&TokenKind::Print) || self.peek().lexeme == "اطبع" || self.peek().lexeme == "print" {
+            self.advance();
+            return Some(self.print_statement());
+        }
+        if self.check(&TokenKind::Return) || self.peek().lexeme == "ارجع" || self.peek().lexeme == "return" {
+            self.advance();
+            return Some(self.return_statement());
+        }
+        if self.match_kinds(&[TokenKind::LeftBrace]) {
+            return Some(Stmt::Block(self.block_statement()));
+        }
         Some(self.expression_statement())
     }
 
@@ -86,17 +108,24 @@ impl Parser {
 
     fn if_statement(&mut self) -> Stmt {
         let condition = self.expression();
-        let then_branch = Box::new(self.statement().unwrap_or(Stmt::Expression(Expr::Literal(String::new()))));
+        
+        // التحقق مما إذا كان هناك قوس بداية للكتلة، إن لم يكن، نستهلكه للاحتياط
+        if self.check(&TokenKind::LeftBrace) { self.advance(); }
+        let then_branch = Box::new(Stmt::Block(self.block_statement()));
+        
         let mut else_branch = None;
-        if self.match_kinds(&[TokenKind::Else]) {
-            else_branch = Some(Box::new(self.statement().unwrap_or(Stmt::Expression(Expr::Literal(String::new())))));
+        if self.peek().lexeme == "والا" || self.peek().lexeme == "إلا" || self.check(&TokenKind::Else) {
+            self.advance();
+            if self.check(&TokenKind::LeftBrace) { self.advance(); }
+            else_branch = Some(Box::new(Stmt::Block(self.block_statement())));
         }
         Stmt::If { condition, then_branch, else_branch }
     }
 
     fn while_statement(&mut self) -> Stmt {
         let condition = self.expression();
-        let body = Box::new(self.statement().unwrap_or(Stmt::Expression(Expr::Literal(String::new()))));
+        if self.check(&TokenKind::LeftBrace) { self.advance(); }
+        let body = Box::new(Stmt::Block(self.block_statement()));
         Stmt::While { condition, body }
     }
 
@@ -112,15 +141,15 @@ impl Parser {
     fn expression_statement(&mut self) -> Stmt {
         let expr = self.expression();
         self.match_kinds(&[TokenKind::Semicolon]);
-        Stmt::Expression(expr)
+        Some(expr).map(Stmt::Expression).unwrap()
     }
 
     fn expression(&mut self) -> Expr { self.assignment() }
 
     fn assignment(&mut self) -> Expr {
         let expr = self.or();
-        if self.match_kinds(&[TokenKind::Equal]) {
-            let equals = self.previous().clone();
+        if self.match_kinds(&[TokenKind::Equal]) || self.peek().lexeme == "=" {
+            let equals = if self.peek().lexeme == "=" { self.advance().clone() } else { self.previous().clone() };
             let value = self.assignment();
             if let Expr::Variable(name) = expr {
                 return Expr::Binary {
@@ -129,15 +158,14 @@ impl Parser {
                     right: Box::new(value),
                 };
             }
-            panic!("خطأ في التعيين: هدف غير صالح.");
         }
         expr
     }
 
     fn or(&mut self) -> Expr {
         let mut expr = self.and();
-        while self.match_kinds(&[TokenKind::OrOr]) {
-            let operator = self.previous().clone();
+        while self.match_kinds(&[TokenKind::OrOr]) || self.peek().lexeme == "أو" {
+            let operator = self.advance().clone();
             let right = self.and();
             expr = Expr::Binary { left: Box::new(expr), operator, right: Box::new(right) };
         }
@@ -146,8 +174,8 @@ impl Parser {
 
     fn and(&mut self) -> Expr {
         let mut expr = self.equality();
-        while self.match_kinds(&[TokenKind::AndAnd]) {
-            let operator = self.previous().clone();
+        while self.match_kinds(&[TokenKind::AndAnd]) || self.peek().lexeme == "و" {
+            let operator = self.advance().clone();
             let right = self.equality();
             expr = Expr::Binary { left: Box::new(expr), operator, right: Box::new(right) };
         }
@@ -156,8 +184,8 @@ impl Parser {
 
     fn equality(&mut self) -> Expr {
         let mut expr = self.comparison();
-        while self.match_kinds(&[TokenKind::EqualEqual, TokenKind::BangEqual]) {
-            let operator = self.previous().clone();
+        while self.match_kinds(&[TokenKind::EqualEqual, TokenKind::BangEqual]) || self.peek().lexeme == "==" {
+            let operator = self.advance().clone();
             let right = self.comparison();
             expr = Expr::Binary { left: Box::new(expr), operator, right: Box::new(right) };
         }
@@ -245,17 +273,6 @@ impl Parser {
             let expr = self.expression();
             self.consume(TokenKind::RightParen, "Expected ')' after expression.");
             return Expr::Grouping(Box::new(expr));
-        }
-        if self.match_kinds(&[TokenKind::LeftBracket]) {
-            let mut elements = Vec::new();
-            if !self.check(&TokenKind::RightBracket) {
-                loop {
-                    elements.push(self.expression());
-                    if !self.match_kinds(&[TokenKind::Comma]) { break; }
-                }
-            }
-            let bracket = self.consume(TokenKind::RightBracket, "Expected ']' after array elements.").clone();
-            return Expr::Array { bracket, elements };
         }
         Expr::Literal(String::new())
     }
