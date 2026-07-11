@@ -79,7 +79,20 @@ impl Interpreter {
                 };
                 self.environment.lock().unwrap().define(name.lexeme.clone(), function);
             }
-            _ => return Err("أمر برمي غير مدعوم حالياً في المفسر".to_string()),
+            Stmt::Return { value, .. } => {
+                let return_val = match value {
+                    Some(expr) => self.evaluate(expr)?,
+                    None => Value::Nil,
+                };
+                // تشفير القيمة مع نوعها لضمان استعادتها بدقة مطلقة
+                match return_val {
+                    Value::Number(n) => return Err(format!("__RET_NUM__{}", n)),
+                    Value::Boolean(b) => return Err(format!("__RET_BOOL__{}", b)),
+                    Value::String(s) => return Err(format!("__RET_STR__{}", s)),
+                    Value::Nil => return Err("__RET_NIL__".to_string()),
+                    _ => return Err("__RET_NIL__".to_string()),
+                }
+            }
         }
         Ok(())
     }
@@ -102,36 +115,47 @@ impl Interpreter {
                         return Err(format!("خطأ: عدد الوسائط غير متطابق. المتوقع {} والممرر {}", params.len(), arguments.len()));
                     }
 
-                    // تقييم قيم الوسائط أولاً
                     let mut evaluated_args = Vec::new();
                     for arg in arguments {
                         evaluated_args.push(self.evaluate(arg)?);
                     }
 
-                    // إنشاء بيئة محجوبة جديدة خاصة بتنفيذ الدالة
                     let previous = self.environment.clone();
                     let mut closure_env = Environment::new_with_enclosing(previous.clone());
                     
-                    // حقن المعاملات بالقيم الممررة داخل البيئة الجديدة
                     for (param, arg_val) in params.iter().zip(evaluated_args) {
                         closure_env.define(param.lexeme.clone(), arg_val);
                     }
 
                     self.environment = Arc::new(Mutex::new(closure_env));
                     
-                    // تنفيذ جسم الدالة
-                    let mut result = Ok(());
+                    let mut return_value = Value::Nil;
                     for statement in &body {
                         if let Err(e) = self.execute(statement) {
-                            result = Err(e);
-                            break;
+                            if e.starts_with("__RET_NUM__") {
+                                let n: f64 = e.trim_start_matches("__RET_NUM__").parse().unwrap_or(0.0);
+                                return_value = Value::Number(n);
+                                break;
+                            } else if e.starts_with("__RET_BOOL__") {
+                                let b: bool = e.trim_start_matches("__RET_BOOL__").parse().unwrap_or(false);
+                                return_value = Value::Boolean(b);
+                                break;
+                            } else if e.starts_with("__RET_STR__") {
+                                let s = e.trim_start_matches("__RET_STR__").to_string();
+                                return_value = Value::String(s);
+                                break;
+                            } else if e == "__RET_NIL__" {
+                                return_value = Value::Nil;
+                                break;
+                            } else {
+                                self.environment = previous;
+                                return Err(e);
+                            }
                         }
                     }
 
                     self.environment = previous;
-                    result?;
-                    
-                    return Ok(Value::Nil); // افتراضياً تعيد عدم إذا لم يكن هناك إرجاع
+                    return Ok(return_value);
                 } else {
                     return Err("يمكن فقط استدعاء الدوال!".to_string());
                 }
