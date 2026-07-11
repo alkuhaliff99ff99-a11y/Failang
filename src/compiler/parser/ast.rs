@@ -19,10 +19,9 @@ pub enum Expr {
         paren: Token,
         arguments: Vec<Expr>,
     },
-    // عقدة المصفوفة الجديدة التي تحتوي على عناصرها الداخلية كـ تعبيرات
     Array {
-        bracket: Token,      // قوس الإغلاق ] لتحديد السطر عند حدوث خطأ قواعدي
-        elements: Vec<Expr>, // العناصر المخزنة بداخل المصفوفة
+        bracket: Token,
+        elements: Vec<Expr>,
     },
 }
 

@@ -23,14 +23,12 @@ impl Lexer {
         }
     }
 
-    // --- تفعيل المحرك الرئيسي للحلقة ---
     pub fn scan_tokens(mut self) -> Result<Vec<Token>, LexError> {
         while !self.is_at_end() {
             self.start = self.current;
             self.scan_token()?;
         }
 
-        // إضافة رمز نهاية الملف عند اكتمال التحليل
         self.tokens.push(Token::new(
             TokenKind::EOF,
             String::new(),
@@ -43,7 +41,6 @@ impl Lexer {
     fn scan_token(&mut self) -> Result<(), LexError> {
         let c = self.advance();
         match c {
-            // الرموز البسيطة (Punctuation)
             '(' => self.add_token(TokenKind::LeftParen),
             ')' => self.add_token(TokenKind::RightParen),
             '{' => self.add_token(TokenKind::LeftBrace),
@@ -55,17 +52,46 @@ impl Lexer {
             ':' => self.add_token(TokenKind::Colon),
             ';' => self.add_token(TokenKind::Semicolon),
 
-            // العمليات الحسابية والمعاملات المركبة
-            '+' => self.add_token(TokenKind::Plus),
+            '+' => {
+                if self.match_char('+') {
+                    self.add_token(TokenKind::PlusPlus)
+                } else if self.match_char('=') {
+                    self.add_token(TokenKind::PlusEq)
+                } else {
+                    self.add_token(TokenKind::Plus)
+                }
+            }
             '-' => {
                 if self.match_char('>') {
                     self.add_token(TokenKind::Arrow)
+                } else if self.match_char('-') {
+                    self.add_token(TokenKind::MinusMinus)
+                } else if self.match_char('=') {
+                    self.add_token(TokenKind::MinusEq)
                 } else {
                     self.add_token(TokenKind::Minus)
                 }
             }
-            '*' => self.add_token(TokenKind::Star),
-            '%' => self.add_token(TokenKind::Percent),
+            '*' => {
+                if self.match_char('*') {
+                    if self.match_char('=') {
+                        self.add_token(TokenKind::PowerEq)
+                    } else {
+                        self.add_token(TokenKind::Power)
+                    }
+                } else if self.match_char('=') {
+                    self.add_token(TokenKind::StarEq)
+                } else {
+                    self.add_token(TokenKind::Star)
+                }
+            }
+            '%' => {
+                if self.match_char('=') {
+                    self.add_token(TokenKind::PercentEq)
+                } else {
+                    self.add_token(TokenKind::Percent)
+                }
+            }
 
             '=' => {
                 if self.match_char('=') {
@@ -96,26 +122,45 @@ impl Lexer {
                 }
             }
 
-            // التعليقات أو علامة القسمة
+            '&' => {
+                if self.match_char('&') {
+                    self.add_token(TokenKind::AndAnd)
+                } else {
+                    return Err(LexError::InvalidCharacter {
+                        ch: c,
+                        line: self.line,
+                        column: self.column - 1,
+                    });
+                }
+            }
+            '|' => {
+                if self.match_char('|') {
+                    self.add_token(TokenKind::OrOr)
+                } else {
+                    return Err(LexError::InvalidCharacter {
+                        ch: c,
+                        line: self.line,
+                        column: self.column - 1,
+                    });
+                }
+            }
+
             '/' => {
                 if self.match_char('/') {
-                    // تعليق سطر واحد: استهلك الحروف حتى نهاية السطر
                     while self.peek() != '\n' && !self.is_at_end() {
                         self.advance();
                     }
                 } else if self.match_char('*') {
-                    // تعليق متعدد الأسطر
                     self.multi_line_comment()?;
+                } else if self.match_char('=') {
+                    self.add_token(TokenKind::SlashEq)
                 } else {
                     self.add_token(TokenKind::Slash)
                 }
             }
 
-            // الفراغات والمسافات (يتم تجاهلها مع تتبع الأسطر)
-            ' ' | '\r' | '\t' => {}
-            '\n' => {} // دالة advance تتكفل بالسطر تلقائياً
+            ' ' | '\r' | '\t' | '\n' => {}
 
-            // النصوص والأرقام والمعرفات
             '"' => self.string_literal()?,
 
             _ => {
@@ -141,8 +186,8 @@ impl Lexer {
 
         while !self.is_at_end() {
             if self.peek() == '*' && self.peek_next() == '/' {
-                self.advance(); // استهلاك '*'
-                self.advance(); // استهلاك '/'
+                self.advance();
+                self.advance();
                 return Ok(());
             }
             self.advance();
@@ -168,7 +213,7 @@ impl Lexer {
             });
         }
 
-        self.advance(); // علامة الإغلاق
+        self.advance();
         let value: String = self.source[self.start + 1..self.current - 1]
             .iter()
             .collect();
@@ -182,7 +227,7 @@ impl Lexer {
         }
 
         if self.peek() == '.' && self.peek_next().is_ascii_digit() {
-            self.advance(); // استهلاك '.'
+            self.advance();
             while self.peek().is_ascii_digit() {
                 self.advance();
             }
@@ -205,7 +250,6 @@ impl Lexer {
         self.add_token_with_lexeme(kind, text);
     }
 
-    // دوال حركة المؤشر والمساعدات التابعة للجزء الثاني والثالث
     pub fn is_at_end(&self) -> bool {
         self.current >= self.source.len()
     }
@@ -265,32 +309,30 @@ impl Lexer {
     }
 }
 
-// --- وحدة الاختبارات الآلية للتأكد من الكود الثنائي ---
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
     fn test_arabic_and_english_code() {
-        let input = r#"
-        دع الاسم = "فيصل"
-        اطبع(الاسم)
-        إذا الاسم == "فيصل"
-            اطبع("مرحباً")
-        وإلا
-            اطبع("أهلاً")
-
-        let name = "Faisal"
-        print(name)
+        let input = r#"دع الاسم = "فيصل"
+        ثابت س = 10
+        س += 5
+        س++
+        2 ** 8
+        إذا صحيح && ليس خطأ
         "#;
 
         let lexer = Lexer::new(input);
         let tokens = lexer.scan_tokens().unwrap();
 
-        // فحص عينة من الرموز المستخرجة للتأكد من سلامتها
-        assert_eq!(tokens[0].kind, TokenKind::Let); // "دع"
-        assert_eq!(tokens[1].kind, TokenKind::Identifier); // "الاسم"
-        assert_eq!(tokens[2].kind, TokenKind::Equal); // "="
-        assert_eq!(tokens[3].kind, TokenKind::String); // ""فيصل""
+        assert_eq!(tokens[0].kind, TokenKind::Let);
+        assert_eq!(tokens[4].kind, TokenKind::Const);
+        assert_eq!(tokens[9].kind, TokenKind::PlusEq);
+        assert_eq!(tokens[12].kind, TokenKind::PlusPlus);
+        assert_eq!(tokens[15].kind, TokenKind::Power);
+        assert_eq!(tokens[18].kind, TokenKind::If);
+        assert_eq!(tokens[20].kind, TokenKind::AndAnd);
+        assert_eq!(tokens[21].kind, TokenKind::Not);
     }
 }

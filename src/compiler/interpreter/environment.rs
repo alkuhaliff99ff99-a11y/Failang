@@ -1,48 +1,50 @@
-use super::value::Value;
-use std::cell::RefCell;
 use std::collections::HashMap;
-use std::rc::Rc;
+use std::sync::{Arc, Mutex};
+use super::value::Value;
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone)]
 pub struct Environment {
-    // النطاق الأب (خارجي) إن وجد
-    enclosing: Option<Rc<RefCell<Environment>>>,
-    // جدول المتغيرات الخاص بهذا النطاق الحالي
     values: HashMap<String, Value>,
+    pub enclosing: Option<Arc<Mutex<Environment>>>,
 }
 
 impl Environment {
-    // إنشاء النطاق العالمي (Global Scope)
     pub fn new() -> Self {
         Self {
+            values: HashMap::new(),
             enclosing: None,
-            values: HashMap::new(),
         }
     }
 
-    // إنشاء نطاق فرعي متداخل (Local Scope)
-    pub fn new_with_enclosing(enclosing: Rc<RefCell<Environment>>) -> Self {
+    pub fn new_with_enclosing(enclosing: Arc<Mutex<Environment>>) -> Self {
         Self {
-            enclosing: Some(enclosing),
             values: HashMap::new(),
+            enclosing: Some(enclosing),
         }
     }
 
-    // تعريف متغير جديد أو تحديث قيمته في النطاق الحالي
     pub fn define(&mut self, name: String, value: Value) {
         self.values.insert(name, value);
     }
 
-    // جلب قيمة متغير بالبحث تصاعدياً من النطاق الحالي للأب
-    pub fn get(&self, name: &str) -> Option<Value> {
+    pub fn get(&self, name: &str) -> Result<Value, String> {
         if let Some(value) = self.values.get(name) {
-            return Some(value.clone());
+            return Ok(value.clone());
         }
-
         if let Some(ref enclosing) = self.enclosing {
-            return enclosing.borrow().get(name);
+            return enclosing.lock().unwrap().get(name);
         }
+        Err(format!("متغير غير معرف '{}'", name))
+    }
 
-        None
+    pub fn assign(&mut self, name: &str, value: Value) -> Result<(), String> {
+        if self.values.contains_key(name) {
+            self.values.insert(name.to_string(), value);
+            return Ok(());
+        }
+        if let Some(ref enclosing) = self.enclosing {
+            return enclosing.lock().unwrap().assign(name, value);
+        }
+        Err(format!("محاولة تعيين قيمة لمتغير غير معرف '{}'", name))
     }
 }
