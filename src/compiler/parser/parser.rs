@@ -45,20 +45,15 @@ impl Parser {
             }
         }
         self.consume(TokenKind::RightParen, "Expected ')' after parameters.");
-        
-        // دعم مرن: إذا وجد نقطتين رئيسيتين `:` أو قوس مجعد `{` يتخطاهما بسلام لبدء جسم الدالة
+
         let is_colon_style = self.match_kinds(&[TokenKind::Colon]);
         if !is_colon_style {
             self.match_kinds(&[TokenKind::LeftBrace]);
         }
 
-        // قراءة محتوى الدالة
         let mut body = Vec::new();
         if is_colon_style {
-            // في أسلوب النقطتين، نقرأ الجمل البرمجية حتى نصل إلى نهاية الملف أو كلمة مفتاحية رئيسية أخرى
             while !self.is_at_end() {
-                // إذا واجهنا جملة مستقلة لا تتبع الدالة (مثل تعريف متغير خارجي أو طباعة غير مزاحة)
-                // هنا نقرأ السطور حتى يكتمل البلوك. لتبسيط المفسر الحالي، نقرأ حتى نهاية الملف أو جمل السطر العام
                 if self.peek().lexeme == "متغير" || self.peek().lexeme == "اطبع" || self.check(&TokenKind::Print) || self.check(&TokenKind::Var) {
                     break;
                 }
@@ -77,7 +72,6 @@ impl Parser {
         let name = self.consume(TokenKind::Identifier, "Expected variable name.").clone();
         let mut initializer = None;
         if self.match_kinds(&[TokenKind::Equal]) || self.peek().lexeme == "=" {
-            if self.peek().lexeme == "=" { self.advance(); }
             initializer = Some(self.expression());
         }
         self.match_kinds(&[TokenKind::Semicolon]);
@@ -165,13 +159,11 @@ impl Parser {
     fn assignment(&mut self) -> Expr {
         let expr = self.or();
         if self.match_kinds(&[TokenKind::Equal]) || self.peek().lexeme == "=" {
-            let equals = if self.peek().lexeme == "=" { self.advance().clone() } else { self.previous().clone() };
             let value = self.assignment();
             if let Expr::Variable(name) = expr {
-                return Expr::Binary {
-                    left: Box::new(Expr::Variable(name)),
-                    operator: equals,
-                    right: Box::new(value),
+                return Expr::Assign {
+                    name,
+                    value: Box::new(value),
                 };
             }
         }
@@ -181,7 +173,7 @@ impl Parser {
     fn or(&mut self) -> Expr {
         let mut expr = self.and();
         while self.match_kinds(&[TokenKind::OrOr]) || self.peek().lexeme == "أو" {
-            let operator = self.advance().clone();
+            let operator = self.previous().clone();
             let right = self.and();
             expr = Expr::Binary { left: Box::new(expr), operator, right: Box::new(right) };
         }
@@ -191,7 +183,7 @@ impl Parser {
     fn and(&mut self) -> Expr {
         let mut expr = self.equality();
         while self.match_kinds(&[TokenKind::AndAnd]) || self.peek().lexeme == "و" {
-            let operator = self.advance().clone();
+            let operator = self.previous().clone();
             let right = self.equality();
             expr = Expr::Binary { left: Box::new(expr), operator, right: Box::new(right) };
         }
@@ -200,8 +192,9 @@ impl Parser {
 
     fn equality(&mut self) -> Expr {
         let mut expr = self.comparison();
-        while self.match_kinds(&[TokenKind::EqualEqual, TokenKind::BangEqual]) || self.peek().lexeme == "==" {
-            let operator = self.advance().clone();
+        while self.match_kinds(&[TokenKind::BangEqual, TokenKind::EqualEqual]) || 
+              self.peek().lexeme == "==" || self.peek().lexeme == "!=" {
+            let operator = self.previous().clone();
             let right = self.comparison();
             expr = Expr::Binary { left: Box::new(expr), operator, right: Box::new(right) };
         }
@@ -210,7 +203,8 @@ impl Parser {
 
     fn comparison(&mut self) -> Expr {
         let mut expr = self.term();
-        while self.match_kinds(&[TokenKind::Less, TokenKind::LessEqual, TokenKind::Greater, TokenKind::GreaterEqual]) {
+        while self.match_kinds(&[TokenKind::Greater, TokenKind::GreaterEqual, TokenKind::Less, TokenKind::LessEqual]) ||
+              self.peek().lexeme == ">" || self.peek().lexeme == "<" || self.peek().lexeme == ">=" || self.peek().lexeme == "<=" {
             let operator = self.previous().clone();
             let right = self.term();
             expr = Expr::Binary { left: Box::new(expr), operator, right: Box::new(right) };
@@ -220,7 +214,7 @@ impl Parser {
 
     fn term(&mut self) -> Expr {
         let mut expr = self.factor();
-        while self.match_kinds(&[TokenKind::Plus, TokenKind::Minus]) {
+        while self.match_kinds(&[TokenKind::Minus, TokenKind::Plus]) || self.peek().lexeme == "+" || self.peek().lexeme == "-" {
             let operator = self.previous().clone();
             let right = self.factor();
             expr = Expr::Binary { left: Box::new(expr), operator, right: Box::new(right) };
@@ -229,18 +223,8 @@ impl Parser {
     }
 
     fn factor(&mut self) -> Expr {
-        let mut expr = self.power();
-        while self.match_kinds(&[TokenKind::Star, TokenKind::Slash, TokenKind::Percent]) {
-            let operator = self.previous().clone();
-            let right = self.power();
-            expr = Expr::Binary { left: Box::new(expr), operator, right: Box::new(right) };
-        }
-        expr
-    }
-
-    fn power(&mut self) -> Expr {
         let mut expr = self.unary();
-        while self.match_kinds(&[TokenKind::Power]) {
+        while self.match_kinds(&[TokenKind::Slash, TokenKind::Star]) || self.peek().lexeme == "*" || self.peek().lexeme == "/" {
             let operator = self.previous().clone();
             let right = self.unary();
             expr = Expr::Binary { left: Box::new(expr), operator, right: Box::new(right) };
@@ -249,7 +233,7 @@ impl Parser {
     }
 
     fn unary(&mut self) -> Expr {
-        if self.match_kinds(&[TokenKind::Bang, TokenKind::Minus]) {
+        if self.match_kinds(&[TokenKind::Bang, TokenKind::Minus]) || self.peek().lexeme == "!" || self.peek().lexeme == "-" {
             let operator = self.previous().clone();
             let right = self.unary();
             return Expr::Unary { operator, right: Box::new(right) };
@@ -260,8 +244,11 @@ impl Parser {
     fn call(&mut self) -> Expr {
         let mut expr = self.primary();
         loop {
-            if self.match_kinds(&[TokenKind::LeftParen]) { expr = self.finish_call(expr); }
-            else { break; }
+            if self.match_kinds(&[TokenKind::LeftParen]) {
+                expr = self.finish_call(expr);
+            } else {
+                break;
+            }
         }
         expr
     }
@@ -279,10 +266,23 @@ impl Parser {
     }
 
     fn primary(&mut self) -> Expr {
-        if self.match_kinds(&[TokenKind::Number, TokenKind::String]) {
+        if self.match_kinds(&[TokenKind::False]) || self.peek().lexeme == "خطأ" {
+            return Expr::Literal("false".to_string());
+        }
+        if self.match_kinds(&[TokenKind::True]) || self.peek().lexeme == "صواب" {
+            return Expr::Literal("true".to_string());
+        }
+        if self.peek().lexeme == "عدم" {
+            self.advance();
+            return Expr::Literal("nil".to_string());
+        }
+        if self.match_kinds(&[TokenKind::Number]) || self.peek().kind == TokenKind::Number {
             return Expr::Literal(self.previous().lexeme.clone());
         }
-        if self.match_kinds(&[TokenKind::Identifier]) {
+        if self.match_kinds(&[TokenKind::String]) || self.peek().kind == TokenKind::String {
+            return Expr::Literal(self.previous().lexeme.clone());
+        }
+        if self.match_kinds(&[TokenKind::Identifier]) || self.peek().kind == TokenKind::Identifier {
             return Expr::Variable(self.previous().clone());
         }
         if self.match_kinds(&[TokenKind::LeftParen]) {
@@ -290,25 +290,17 @@ impl Parser {
             self.consume(TokenKind::RightParen, "Expected ')' after expression.");
             return Expr::Grouping(Box::new(expr));
         }
-        if self.match_kinds(&[TokenKind::LeftBracket]) || self.peek().lexeme == "[" {
-            let bracket = if self.peek().lexeme == "[" { self.advance().clone() } else { self.previous().clone() };
-            let mut elements = Vec::new();
-            if !self.check(&TokenKind::RightBracket) && self.peek().lexeme != "]" {
-                loop {
-                    elements.push(self.expression());
-                    if !self.match_kinds(&[TokenKind::Comma]) && self.peek().lexeme != "," { break; }
-                    if self.peek().lexeme == "," { self.advance(); }
-                }
-            }
-            self.consume(TokenKind::RightBracket, "Expected ']' after array elements.");
-            return Expr::Array { elements, bracket };
-        }
-        Expr::Literal(String::new())
+        
+        let fallback = self.advance().lexeme.clone();
+        Expr::Literal(fallback)
     }
 
     fn match_kinds(&mut self, kinds: &[TokenKind]) -> bool {
         for kind in kinds {
-            if self.check(kind) { self.advance(); return true; }
+            if self.check(kind) {
+                self.advance();
+                return true;
+            }
         }
         false
     }
@@ -323,11 +315,20 @@ impl Parser {
         self.previous()
     }
 
-    fn is_at_end(&self) -> bool { self.peek().kind == TokenKind::EOF }
-    fn peek(&self) -> &Token { &self.tokens[self.current] }
-    fn previous(&self) -> &Token { &self.tokens[self.current - 1] }
-    fn consume(&mut self, kind: TokenKind, _msg: &str) -> &Token {
+    fn is_at_end(&self) -> bool {
+        self.peek().kind == TokenKind::EOF
+    }
+
+    pub fn peek(&self) -> &Token {
+        &self.tokens[self.current]
+    }
+
+    fn previous(&self) -> &Token {
+        &self.tokens[self.current - 1]
+    }
+
+    fn consume(&mut self, kind: TokenKind, message: &str) -> &Token {
         if self.check(&kind) { return self.advance(); }
-        self.advance()
+        panic!("{}", message);
     }
 }

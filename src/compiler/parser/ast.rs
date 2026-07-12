@@ -4,6 +4,10 @@ use crate::compiler::lexer::Token;
 pub enum Expr {
     Literal(String),
     Variable(Token),
+    Assign {
+        name: Token,
+        value: Box<Expr>,
+    },
     Unary {
         operator: Token,
         right: Box<Expr>,
@@ -47,6 +51,7 @@ pub enum Stmt {
         name: Token,
         params: Vec<Token>,
         body: Vec<Stmt>,
+
     },
     Return {
         keyword: Token,
