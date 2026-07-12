@@ -26,7 +26,7 @@ impl Parser {
             self.advance();
             return Some(self.function_declaration());
         }
-        if self.check(&TokenKind::Let) || self.check(&TokenKind::Var) || 
+        if self.check(&TokenKind::Let) || self.check(&TokenKind::Var) ||
            self.peek().lexeme == "متغير" || self.peek().lexeme == "دع" || self.peek().lexeme == "let" {
             self.advance();
             return self.var_declaration();
@@ -45,8 +45,31 @@ impl Parser {
             }
         }
         self.consume(TokenKind::RightParen, "Expected ')' after parameters.");
-        self.consume(TokenKind::LeftBrace, "Expected '{' before function body.");
-        let body = self.block_statement();
+        
+        // دعم مرن: إذا وجد نقطتين رئيسيتين `:` أو قوس مجعد `{` يتخطاهما بسلام لبدء جسم الدالة
+        let is_colon_style = self.match_kinds(&[TokenKind::Colon]);
+        if !is_colon_style {
+            self.match_kinds(&[TokenKind::LeftBrace]);
+        }
+
+        // قراءة محتوى الدالة
+        let mut body = Vec::new();
+        if is_colon_style {
+            // في أسلوب النقطتين، نقرأ الجمل البرمجية حتى نصل إلى نهاية الملف أو كلمة مفتاحية رئيسية أخرى
+            while !self.is_at_end() {
+                // إذا واجهنا جملة مستقلة لا تتبع الدالة (مثل تعريف متغير خارجي أو طباعة غير مزاحة)
+                // هنا نقرأ السطور حتى يكتمل البلوك. لتبسيط المفسر الحالي، نقرأ حتى نهاية الملف أو جمل السطر العام
+                if self.peek().lexeme == "متغير" || self.peek().lexeme == "اطبع" || self.check(&TokenKind::Print) || self.check(&TokenKind::Var) {
+                    break;
+                }
+                if let Some(stmt) = self.declaration() {
+                    body.push(stmt);
+                }
+            }
+        } else {
+            body = self.block_statement();
+        }
+
         Stmt::Function { name, params, body }
     }
 
@@ -87,7 +110,7 @@ impl Parser {
     fn return_statement(&mut self) -> Stmt {
         let keyword = self.previous().clone();
         let mut value = None;
-        if !self.check(&TokenKind::Semicolon) && !self.check(&TokenKind::RightBrace) {
+        if !self.check(&TokenKind::Semicolon) && !self.check(&TokenKind::RightBrace) && !self.is_at_end() {
             value = Some(self.expression());
         }
         self.match_kinds(&[TokenKind::Semicolon]);

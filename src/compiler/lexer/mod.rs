@@ -6,9 +6,9 @@ pub enum TokenKind {
     Comma, Dot, Minus, Plus, Semicolon, Slash, Star, Percent,
     Bang, BangEqual, Equal, EqualEqual, Greater, GreaterEqual, Less, LessEqual,
 
-    // المشغلات الجديدة والأسس
+    // المشغلات الجديدة والأسس والنقطتين الرأسيتين
     Power, PlusEq, MinusEq, StarEq, SlashEq, PercentEq, PlusPlus, MinusMinus,
-    AndAnd, OrOr, Arrow,
+    AndAnd, OrOr, Arrow, Colon,
 
     Identifier, String, Number,
 
@@ -55,7 +55,9 @@ impl Lexer {
         keywords.insert("ثابت".to_string(), TokenKind::Const);
         keywords.insert("متغير".to_string(), TokenKind::Var);
         keywords.insert("إذا".to_string(), TokenKind::If);
+        keywords.insert("اذا".to_string(), TokenKind::If);
         keywords.insert("وإلا".to_string(), TokenKind::Else);
+        keywords.insert("والا".to_string(), TokenKind::Else);
         keywords.insert("طالما".to_string(), TokenKind::While);
         keywords.insert("اطبع".to_string(), TokenKind::Print);
         keywords.insert("صحيح".to_string(), TokenKind::True);
@@ -63,6 +65,7 @@ impl Lexer {
         keywords.insert("دالة".to_string(), TokenKind::Function);
         keywords.insert("عد".to_string(), TokenKind::Return);
         keywords.insert("أرجع".to_string(), TokenKind::Return);
+        keywords.insert("ارجع".to_string(), TokenKind::Return);
 
         Self {
             source: source.chars().collect(),
@@ -99,6 +102,7 @@ impl Lexer {
             ',' | '،' => self.add_token(TokenKind::Comma),
             '.' => self.add_token(TokenKind::Dot),
             ';' => self.add_token(TokenKind::Semicolon),
+            ':' | '：' => self.add_token(TokenKind::Colon), 
             '+' => {
                 let kind = if self.match_char('+') { TokenKind::PlusPlus }
                            else if self.match_char('=') { TokenKind::PlusEq }
@@ -160,7 +164,7 @@ impl Lexer {
                     self.add_token(TokenKind::Slash);
                 }
             }
-            ' ' | '\r' | '\t' => {}
+            ' ' | '\r' | '\t' | '\u{200E}' | '\u{200F}' | '\u{202B}' | '\u{202C}' => {} 
             '\n' => self.line += 1,
             '"' => self.string_token()?,
             _ => {
@@ -232,5 +236,23 @@ impl Lexer {
 
     fn add_token_with_lexeme(&mut self, kind: TokenKind, lexeme: String) {
         self.tokens.push(Token { kind, lexeme, line: self.line });
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_colon_and_functions() {
+        let input = "دالة اختبار():";
+        let lexer = Lexer::new(input);
+        let tokens = lexer.scan_tokens().unwrap();
+        
+        assert_eq!(tokens[0].kind, TokenKind::Function);
+        assert_eq!(tokens[1].kind, TokenKind::Identifier);
+        assert_eq!(tokens[2].kind, TokenKind::LeftParen);
+        assert_eq!(tokens[3].kind, TokenKind::RightParen);
+        assert_eq!(tokens[4].kind, TokenKind::Colon);
     }
 }
