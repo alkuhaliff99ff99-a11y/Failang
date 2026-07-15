@@ -385,6 +385,23 @@ impl Parser {
                 op.lexeme = "<".to_string();
                 operator = Some(op);
             }
+            else if self.peek().lexeme == "يساوي"
+            {
+                let mut op = self.advance().clone();
+                op.lexeme = "==".to_string();
+                operator = Some(op);
+            }
+            else if self.peek().lexeme == "لا"
+            {
+                let mut op = self.advance().clone();
+
+                if self.peek().lexeme == "يساوي" {
+                    self.advance();
+                }
+
+                op.lexeme = "!=".to_string();
+                operator = Some(op);
+            }
 
             if let Some(op) = operator {
                 let right = self.term()?;

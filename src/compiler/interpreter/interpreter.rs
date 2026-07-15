@@ -178,7 +178,11 @@ impl Interpreter {
                     (Value::Number(lv), Value::Number(rv)) => {
                         match operator.kind {
                             TokenKind::Less => Ok(Value::Boolean(lv < rv)),
+                            TokenKind::LessEqual => Ok(Value::Boolean(lv <= rv)),
                             TokenKind::Greater => Ok(Value::Boolean(lv > rv)),
+                            TokenKind::GreaterEqual => Ok(Value::Boolean(lv >= rv)),
+                            TokenKind::EqualEqual => Ok(Value::Boolean(lv == rv)),
+                            TokenKind::BangEqual => Ok(Value::Boolean(lv != rv)),
                             TokenKind::Plus => Ok(Value::Number(lv + rv)),
                             TokenKind::Minus => Ok(Value::Number(lv - rv)),
                             TokenKind::Star => Ok(Value::Number(lv * rv)),
@@ -207,7 +211,21 @@ impl Interpreter {
                             Err(ControlFlow::Error("العملية الوحيدة المتاحة للنصوص هي الجمع (+)".to_string()))
                         }
                     }
-                    (left_val, right_val) => Err(ControlFlow::Error(format!("خطأ حسابي: لا يمكن إجراء عملية بين {:?} و {:?}", left_val, right_val))),
+        
+            (Value::Boolean(lb), Value::Boolean(rb)) => {
+                match operator.kind {
+                    TokenKind::AndAnd => Ok(Value::Boolean(lb && rb)),
+                    TokenKind::OrOr => Ok(Value::Boolean(lb || rb)),
+                    TokenKind::EqualEqual => Ok(Value::Boolean(lb == rb)),
+                    TokenKind::BangEqual => Ok(Value::Boolean(lb != rb)),
+                    _ => Err(ControlFlow::Error(format!(
+                        "مشغل غير مدعوم: {:?}",
+                        operator.kind
+                    ))),
+                }
+            }
+
+            (left_val, right_val) => Err(ControlFlow::Error(format!("خطأ حسابي: لا يمكن إجراء عملية بين {:?} و {:?}", left_val, right_val))),
                 }
             }
             Expr::Grouping(inner) => self.evaluate(inner),

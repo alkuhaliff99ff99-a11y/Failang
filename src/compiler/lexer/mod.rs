@@ -74,6 +74,9 @@ impl Lexer {
         keywords.insert("يساوي".to_string(), TokenKind::EqualEqual);
         keywords.insert("مساوي".to_string(), TokenKind::EqualEqual);
         keywords.insert("لا".to_string(), TokenKind::BangEqual);
+        keywords.insert("و".to_string(), TokenKind::AndAnd);
+        keywords.insert("أو".to_string(), TokenKind::OrOr);
+        keywords.insert("او".to_string(), TokenKind::OrOr);
 
         Self {
             source: source.chars().collect(),
