@@ -1,7 +1,15 @@
 use crate::compiler::parser::ast::{Expr, Stmt};
-use crate::compiler::lexer::TokenKind;
+use crate::compiler::lexer::{Token, TokenKind};
 use crate::compiler::interpreter::environment::Environment;
 use crate::compiler::interpreter::value::Value;
+use std::sync::Arc;
+
+// هيكل للتحكم في تدفق البرنامج عند مواجهة دالة الإرجاع "return"
+#[derive(Debug, Clone)]
+pub enum ControlFlow {
+    Return(Value),
+    Error(String),
+}
 
 pub struct Interpreter {
     pub environment: Environment,
@@ -14,26 +22,33 @@ impl Interpreter {
 
     pub fn interpret(&mut self, statements: &[Stmt]) -> Result<(), String> {
         for stmt in statements {
-            if let Err(e) = self.execute(stmt) {
-                println!("❌ خطأ أثناء التنفيذ: {}", e);
-                return Err(e);
+            if let Err(cf) = self.execute(stmt) {
+                match cf {
+                    ControlFlow::Error(e) => {
+                        println!("❌ خطأ أثناء التنفيذ: {}", e);
+                        return Err(e);
+                    }
+                    ControlFlow::Return(_) => {
+                        println!("❌ خطأ أثناء التنفيذ: تم استخدام 'ارجع' خارج نطاق الدالة.");
+                        return Err("ارجع خارج دالة".to_string());
+                    }
+                }
             }
         }
         Ok(())
     }
 
-    fn execute(&mut self, stmt: &Stmt) -> Result<(), String> {
+    fn execute(&mut self, stmt: &Stmt) -> Result<(), ControlFlow> {
         match stmt {
             Stmt::Expression(expr) => { self.evaluate(expr)?; }
             Stmt::Print(expr) => {
                 let val = self.evaluate(expr)?;
-                // طباعة نظيفة ومباشرة للمستخدم بدون تعقيد الـ Debug
                 match val {
                     Value::Number(n) => println!("{}", n),
                     Value::String(s) => println!("{}", s),
                     Value::Boolean(b) => println!("{}", if b { "صواب" } else { "خطأ" }),
                     Value::Nil => println!("عدم"),
-                    _ => println!("{:?}", val),
+                    _ => println!("{}", val), // استخدام طباعة Display المخصصة التي صممناها سابقاً
                 }
             }
             Stmt::Var { name, initializer } => {
@@ -50,28 +65,66 @@ impl Interpreter {
                     self.execute(body)?;
                 }
             }
+            Stmt::If { condition, then_branch, else_branch } => {
+                let cond_val = self.evaluate(condition)?;
+                if self.is_truthy(&cond_val) {
+                    self.execute(then_branch)?;
+                } else if let Some(else_stmt) = else_branch {
+                    self.execute(else_stmt)?;
+                }
+            }
             Stmt::Block(statements) => {
+                // تفعيل معالجة الـ block وتمريره
                 for statement in statements {
                     self.execute(statement)?;
                 }
             }
-            _ => {}
+            Stmt::Function { name, params, body } => {
+                let function = Value::Function {
+                    name: name.clone(),
+                    params: params.clone(),
+                    body: body.clone(),
+                };
+                self.environment.define(name.lexeme.clone(), function);
+            }
+            Stmt::Return { keyword: _, value } => {
+                let mut return_val = Value::Nil;
+                if let Some(expr) = value {
+                    return_val = self.evaluate(expr)?;
+                }
+                return Err(ControlFlow::Return(return_val));
+            }
         }
         Ok(())
     }
 
-    fn evaluate(&mut self, expr: &Expr) -> Result<Value, String> {
+    fn evaluate(&mut self, expr: &Expr) -> Result<Value, ControlFlow> {
         match expr {
             Expr::Literal(val) => {
                 if let Ok(n) = val.trim().parse::<f64>() {
                     return Ok(Value::Number(n));
                 }
-                Ok(Value::String(val.clone()))
+                // معالجة صواب وخطأ والعدم كنصوص قيمية إذا لم يتعرف عليها كمفاتيح بالـ Lexer
+                if val == "true" || val == "صواب" { return Ok(Value::Boolean(true)); }
+                if val == "false" || val == "خطأ" { return Ok(Value::Boolean(false)); }
+                if val == "nil" || val == "عدم" { return Ok(Value::Nil); }
+                
+                // إزالة علامات الاقتباس إن وجدت في النصوص
+                let cleaned = if val.starts_with('"') && val.ends_with('"') {
+                    val[1..val.len()-1].to_string()
+                } else {
+                    val.clone()
+                };
+                Ok(Value::String(cleaned))
             }
-            Expr::Variable(name) => self.environment.get(&name.lexeme),
+            Expr::Variable(name) => {
+                self.environment.get(&name.lexeme)
+                    .map_err(|e| ControlFlow::Error(e))
+            }
             Expr::Assign { name, value } => {
                 let val = self.evaluate(value)?;
-                self.environment.assign(&name.lexeme, val.clone())?;
+                self.environment.assign(&name.lexeme, val.clone())
+                    .map_err(|e| ControlFlow::Error(e))?;
                 Ok(val)
             }
             Expr::Binary { left, operator, right } => {
@@ -81,20 +134,95 @@ impl Interpreter {
                     (Value::Number(lv), Value::Number(rv)) => {
                         match operator.kind {
                             TokenKind::Less => Ok(Value::Boolean(lv < rv)),
+                            TokenKind::Greater => Ok(Value::Boolean(lv > rv)),
                             TokenKind::Plus => Ok(Value::Number(lv + rv)),
                             TokenKind::Minus => Ok(Value::Number(lv - rv)),
                             TokenKind::Star => Ok(Value::Number(lv * rv)),
                             TokenKind::Slash => {
-                                if rv == 0.0 { return Err("خطأ: لا يمكن القسمة على صفر".to_string()); }
+                                if rv == 0.0 { 
+                                    return Err(ControlFlow::Error("خطأ: لا يمكن القسمة على صفر".to_string())); 
+                                }
                                 Ok(Value::Number(lv / rv))
                             }
-                            _ => Err(format!("مشغل غير مدعوم: {:?}", operator.kind)),
+                            _ => Err(ControlFlow::Error(format!("مشغل غير مدعوم: {:?}", operator.kind))),
                         }
                     }
-                    (left_val, right_val) => Err(format!("خطأ حسابي: لا يمكن إجراء عملية بين {:?} و {:?}", left_val, right_val)),
+                    (Value::String(mut lv), Value::String(rv)) => {
+                        if operator.kind == TokenKind::Plus || operator.lexeme == "+" {
+                            lv.push_str(&rv);
+                            Ok(Value::String(lv))
+                        } else {
+                            Err(ControlFlow::Error("العملية الوحيدة المتاحة للنصوص هي الجمع (+)".to_string()))
+                        }
+                    }
+                    (Value::String(mut lv), Value::Number(rv)) => {
+                        if operator.kind == TokenKind::Plus || operator.lexeme == "+" {
+                            lv.push_str(&rv.to_string());
+                            Ok(Value::String(lv))
+                        } else {
+                            Err(ControlFlow::Error("العملية الوحيدة المتاحة للنصوص هي الجمع (+)".to_string()))
+                        }
+                    }
+                    (left_val, right_val) => Err(ControlFlow::Error(format!("خطأ حسابي: لا يمكن إجراء عملية بين {:?} و {:?}", left_val, right_val))),
                 }
             }
-            _ => Err("تعبير غير مدعوم".to_string()),
+            Expr::Grouping(inner) => self.evaluate(inner),
+            Expr::Call { callee, paren: _, arguments } => {
+                let callee_val = self.evaluate(callee)?;
+                
+                let mut evaluated_args = Vec::new();
+                for arg in arguments {
+                    evaluated_args.push(self.evaluate(arg)?);
+                }
+
+                match callee_val {
+                    Value::Function { name: _, params, body } => {
+                        if evaluated_args.len() != params.len() {
+                            return Err(ControlFlow::Error(format!(
+                                "خطأ في تمرير المعاملات: المتوقع {} وسيطاً، ولكن تم تمرير {}.",
+                                params.len(),
+                                evaluated_args.len()
+                            )));
+                        }
+
+                        // حفظ البيئة الحالية للدخول في النطاق الخاص بالدالة
+                        let previous_env = self.environment.clone();
+                        
+                        // إنشاء نطاق محلي جديد ومغلق وتمرير المتغيرات إليه
+                        let mut local_env = Environment::new_with_enclosing(std::sync::Arc::new(std::sync::Mutex::new(previous_env.clone())));
+                        for (param, arg_val) in params.iter().zip(evaluated_args.iter()) {
+                            local_env.define(param.lexeme.clone(), arg_val.clone());
+                        }
+
+                        // تبديل بيئة العمل الحالية بالمحلية
+                        self.environment = local_env;
+
+                        // تشغيل جسد الدالة وحصر الـ Return
+                        let mut return_value = Value::Nil;
+                        for stmt in &body {
+                            if let Err(cf) = self.execute(stmt) {
+                                match cf {
+                                    ControlFlow::Return(val) => {
+                                        return_value = val;
+                                        break;
+                                    }
+                                    ControlFlow::Error(e) => {
+                                        // استرجاع البيئة القديمة قبل الخروج بالخطأ لمنع تسريب النطاقات
+                                        self.environment = previous_env;
+                                        return Err(ControlFlow::Error(e));
+                                    }
+                                }
+                            }
+                        }
+
+                        // استرجاع البيئة الأصلية بعد الانتهاء
+                        self.environment = previous_env;
+                        Ok(return_value)
+                    }
+                    _ => Err(ControlFlow::Error("لا يمكن استدعاء هذا الكائن كدالة.".to_string())),
+                }
+            }
+            _ => Err(ControlFlow::Error("تعبير غير مدعوم حالياً في المفسر.".to_string())),
         }
     }
 
