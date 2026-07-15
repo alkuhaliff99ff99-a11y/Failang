@@ -86,3 +86,16 @@ hello.fsl
 
 Failang (FSL)
 Fast • Safe • Logical
+
+---
+
+## CLI Commands | أوامر الطرفية
+
+```bash
+fsl run file.fsl
+fsl test
+fsl build
+fsl new ProjectName
+fsl help
+fsl fmt
+```
