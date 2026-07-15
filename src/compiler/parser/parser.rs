@@ -191,8 +191,9 @@ impl Parser {
             "متوقع سطر جديد بعد شرط إذا."
         )?;
 
-        let then_branch =
-            Box::new(Stmt::Block(self.block_statement()?));
+        let then_branch = Box::new(
+            Stmt::Block(self.block_statement()?)
+        );
 
         let mut else_branch = None;
 
@@ -202,15 +203,23 @@ impl Parser {
         {
             self.advance();
 
-            self.consume(
-                TokenKind::Newline,
-                "متوقع سطر جديد بعد وإلا."
-            )?;
+            // دعم: وإلا إذا
+            if self.check(&TokenKind::If)
+                || self.peek().lexeme == "إذا"
+                || self.peek().lexeme == "اذا"
+            {
+                self.advance();
+                else_branch = Some(Box::new(self.if_statement()?));
+            } else {
+                self.consume(
+                    TokenKind::Newline,
+                    "متوقع سطر جديد بعد وإلا."
+                )?;
 
-            else_branch =
-                Some(Box::new(
+                else_branch = Some(Box::new(
                     Stmt::Block(self.block_statement()?)
                 ));
+            }
         }
 
         Ok(Stmt::If {
@@ -220,7 +229,7 @@ impl Parser {
         })
     }
 
-    fn while_statement(&mut self) -> Result<Stmt, ParseError> {
+fn while_statement(&mut self) -> Result<Stmt, ParseError> {
         let condition = self.expression()?;
 
         self.consume(
