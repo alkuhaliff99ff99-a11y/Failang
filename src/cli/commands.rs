@@ -27,8 +27,18 @@ pub fn execute(args: &[String]) {
             crate::cli::fmt::format();
         }
 
+        "help" | "--help" | "-h" => {
+            crate::cli::help::show();
+        }
+
         "new" => {
-            crate::cli::new::create();
+            let name = if args.len() >= 3 {
+                &args[2]
+            } else {
+                "FailangProject"
+            };
+
+            crate::cli::new::create(name);
         }
 
         file => {

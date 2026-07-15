@@ -4,3 +4,5 @@ pub mod test;
 pub mod build;
 pub mod fmt;
 pub mod new;
+pub mod help;
+pub mod help;
