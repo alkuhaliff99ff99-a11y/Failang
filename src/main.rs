@@ -11,13 +11,18 @@ fn main() {
     let args: Vec<String> = env::args().collect();
     
     if args.len() > 2 {
-        println!("الاستخدام: cargo run [اسم_الملف.fsl]");
+        println!("الاستخدام: fsl [اسم_الملف.fsl]");
         process::exit(1);
     } else if args.len() == 2 {
         let file_path = &args[1];
+
+        if !file_path.ends_with(".fsl") {
+            eprintln!("[FSL:System] خطأ: يجب تشغيل ملف بامتداد .fsl");
+            process::exit(1);
+        }
+
         run_file(file_path);
     } else {
-        // تشغيل الـ REPL من وحدته المستقلة الجديدة
         repl::run_repl();
     }
 }
