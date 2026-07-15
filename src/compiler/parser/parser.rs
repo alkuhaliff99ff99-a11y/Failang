@@ -341,14 +341,64 @@ impl Parser {
 
     fn comparison(&mut self) -> Result<Expr, ParseError> {
         let mut expr = self.term()?;
-        while self.match_kinds(&[TokenKind::Greater, TokenKind::GreaterEqual, TokenKind::Less, TokenKind::LessEqual]) ||
-              self.peek().lexeme == ">" || self.peek().lexeme == "<" || self.peek().lexeme == ">=" || self.peek().lexeme == "<=" {
-            let lex = self.peek().lexeme.clone();
-            if lex == ">" || lex == "<" || lex == ">=" || lex == "<=" { self.advance(); }
-            let operator = self.previous().clone();
-            let right = self.term()?;
-            expr = Expr::Binary { left: Box::new(expr), operator, right: Box::new(right) };
+
+        loop {
+            let mut operator = None;
+
+            if self.match_kinds(&[
+                TokenKind::Greater,
+                TokenKind::GreaterEqual,
+                TokenKind::Less,
+                TokenKind::LessEqual,
+            ]) {
+                let op = self.previous().clone();
+
+                // دعم الصيغة الطبيعية: أكبر من / أصغر من
+                if self.peek().lexeme == "من" {
+                    self.advance();
+                }
+
+                operator = Some(op);
+            }
+            else if self.peek().kind == TokenKind::Greater
+                || self.peek().lexeme == "أكبر"
+            {
+                let mut op = self.advance().clone();
+
+                if self.peek().lexeme == "من" {
+                    self.advance();
+                }
+
+                op.lexeme = ">".to_string();
+                operator = Some(op);
+            }
+            else if self.peek().kind == TokenKind::Less
+                || self.peek().lexeme == "أصغر"
+                || self.peek().lexeme == "اصغر"
+            {
+                let mut op = self.advance().clone();
+
+                if self.peek().lexeme == "من" {
+                    self.advance();
+                }
+
+                op.lexeme = "<".to_string();
+                operator = Some(op);
+            }
+
+            if let Some(op) = operator {
+                let right = self.term()?;
+
+                expr = Expr::Binary {
+                    left: Box::new(expr),
+                    operator: op,
+                    right: Box::new(right),
+                };
+            } else {
+                break;
+            }
         }
+
         Ok(expr)
     }
 
