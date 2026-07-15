@@ -7,11 +7,12 @@ use crate::compiler::parser::Parser;
 const GREEN: &str = "\x1b[32m";
 const CYAN: &str = "\x1b[36m";
 const YELLOW: &str = "\x1b[33m";
+const RED: &str = "\x1b[31m";
 const RESET: &str = "\x1b[0m";
 
 pub fn run_repl() {
     let mut interpreter = Interpreter::new();
-    
+
     println!("{}", YELLOW);
     println!("=================================================");
     println!("        Failang (FSL) Interactive Shell          ");
@@ -21,7 +22,6 @@ pub fn run_repl() {
     println!("{}", RESET);
 
     loop {
-        // طباعة المؤشر البسيط باللون الأخضر المضمون
         print!("{}fsl>{} ", GREEN, RESET);
         io::stdout().flush().unwrap();
 
@@ -37,7 +37,6 @@ pub fn run_repl() {
                     continue;
                 }
 
-                // معالجة الأوامر الخاصة بالطرفية التي تبدأ بـ :
                 if trimmed.starts_with(':') {
                     match trimmed {
                         ":exit" | ":خروج" => {
@@ -49,7 +48,7 @@ pub fn run_repl() {
                             continue;
                         }
                         ":clear" | ":مسح" => {
-                            print!("{}[2J{}[1;1H", 27 as char, 27 as char); // مسح الشاشة
+                            print!("{}[2J{}[1;1H", 27 as char, 27 as char);
                             io::stdout().flush().unwrap();
                             continue;
                         }
@@ -60,7 +59,6 @@ pub fn run_repl() {
                     }
                 }
 
-                // تنفيذ الكود المدخل
                 execute(trimmed, &mut interpreter);
             }
             Err(error) => {
@@ -71,21 +69,30 @@ pub fn run_repl() {
     }
 }
 
-// دالة التنفيذ الموحدة لمنع التكرار وتحسين معالجة الأخطاء
 pub fn execute(source: &str, interpreter: &mut Interpreter) {
     let lexer = Lexer::new(source);
     let tokens = match lexer.scan_tokens() {
         Ok(t) => t,
         Err(e) => {
-            eprintln!("{}[FSL:Lexer] خطأ معجمي: {:?}{}", YELLOW, e, RESET);
+            eprintln!("{}[FSL:Lexer] خطأ معجمي: {:?}{}", RED, e, RESET);
             return;
         }
     };
 
     let mut parser = Parser::new(tokens);
-    let statements = parser.parse(); // ملاحظة: سنقوم بتحويل الـ parser لإرجاع Result في مرحلة قادمة
-
-    let _ = interpreter.interpret(&statements);
+    match parser.parse() {
+        Ok(statements) => {
+            let _ = interpreter.interpret(&statements);
+        }
+        Err(errors) => {
+            for err in errors {
+                eprintln!(
+                    "{}[FSL:Parser] خطأ نحوي عند الرمز '{}': {}{}",
+                    RED, err.token.lexeme, err.message, RESET
+                );
+            }
+        }
+    }
 }
 
 fn print_help() {
