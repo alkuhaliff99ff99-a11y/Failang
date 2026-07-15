@@ -2,6 +2,8 @@ use crate::compiler::parser::ast::{Expr, Stmt};
 use crate::compiler::lexer::TokenKind;
 use crate::compiler::interpreter::environment::Environment;
 use crate::compiler::interpreter::value::Value;
+use crate::diagnostics::error::translate;
+use crate::diagnostics::reporter::report;
 
 // هيكل للتحكم في تدفق البرنامج عند مواجهة دالة الإرجاع "return"
 #[derive(Debug, Clone)]
@@ -37,7 +39,8 @@ impl Interpreter {
             if let Err(cf) = self.execute(stmt) {
                 match cf {
                     ControlFlow::Error(e) => {
-                        println!("❌ خطأ أثناء التنفيذ: {}", e);
+                        let diagnostic = translate(&e);
+                        report(&diagnostic);
                         return Err(e);
                     }
                     ControlFlow::Return(_) => {
