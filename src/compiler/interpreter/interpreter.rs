@@ -117,8 +117,40 @@ impl Interpreter {
                 self.environment.get(&name.lexeme)
                     .map_err(|e| ControlFlow::Error(e))
             }
-            Expr::Assign { name, value } => {
-                let val = self.evaluate(value)?;
+            Expr::IndexAssign { callee, index, value } => {
+                let evaluated_val = self.evaluate(&value)?;
+                let evaluated_index = self.evaluate(index)?;
+                
+                let idx = match evaluated_index {
+                    Value::Number(n) => n as usize,
+                    _ => return Err(ControlFlow::Error("يجب أن يكون الفهرس رقماً صحيحاً.".to_string())),
+                };
+
+                if let Expr::Variable(name) = &**callee {
+                    let mut arr_val = self.environment.get(&name.lexeme)
+                        .map_err(|e| ControlFlow::Error(e))?;
+
+                    if let Value::Array(ref mut elements) = arr_val {
+                        if idx >= elements.len() {
+                            return Err(ControlFlow::Error(format!(
+                                "خارج حدود المصفوفة: طول المصفوفة هو {} والفهرس المطلوب هو {}.",
+                                elements.len(),
+                                idx
+                            )));
+                        }
+                        elements[idx] = evaluated_val.clone();
+                        self.environment.assign(&name.lexeme, Value::Array(elements.clone()))
+                            .map_err(|e| ControlFlow::Error(e))?;
+                        Ok(evaluated_val)
+                    } else {
+                        Err(ControlFlow::Error("لا يمكن تعديل فهرس لمتغير ليس مصفوفة.".to_string()))
+                    }
+                } else {
+                    Err(ControlFlow::Error("الهدف المحدد للتعديل غير صالح.".to_string()))
+                }
+            },
+            &Expr::Assign { ref name, ref value } => {
+                let val = self.evaluate(&value)?;
                 self.environment.assign(&name.lexeme, val.clone())
                     .map_err(|e| ControlFlow::Error(e))?;
                 Ok(val)

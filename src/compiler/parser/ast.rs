@@ -4,6 +4,11 @@ use crate::compiler::lexer::Token;
 pub enum Expr {
     Literal(String),
     Variable(Token),
+    IndexAssign {
+        callee: Box<Expr>,
+        index: Box<Expr>,
+        value: Box<Expr>,
+    },
     Assign {
         name: Token,
         value: Box<Expr>,
