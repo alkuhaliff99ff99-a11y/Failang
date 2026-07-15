@@ -369,6 +369,7 @@ impl Parser {
                     self.advance();
                 }
 
+                op.kind = TokenKind::Greater;
                 op.lexeme = ">".to_string();
                 operator = Some(op);
             }
@@ -382,12 +383,14 @@ impl Parser {
                     self.advance();
                 }
 
+                op.kind = TokenKind::Less;
                 op.lexeme = "<".to_string();
                 operator = Some(op);
             }
             else if self.peek().lexeme == "يساوي"
             {
                 let mut op = self.advance().clone();
+                op.kind = TokenKind::EqualEqual;
                 op.lexeme = "==".to_string();
                 operator = Some(op);
             }
@@ -399,6 +402,7 @@ impl Parser {
                     self.advance();
                 }
 
+                op.kind = TokenKind::BangEqual;
                 op.lexeme = "!=".to_string();
                 operator = Some(op);
             }
