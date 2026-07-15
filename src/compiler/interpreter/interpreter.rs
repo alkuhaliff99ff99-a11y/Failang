@@ -23,6 +23,9 @@ impl Interpreter {
         env.define("أضف".to_string(), Value::Builtin("append".to_string()));
         env.define("أول".to_string(), Value::Builtin("first".to_string()));
         env.define("آخر".to_string(), Value::Builtin("last".to_string()));
+        env.define("يحتوي".to_string(), Value::Builtin("contains".to_string()));
+        env.define("قطع".to_string(), Value::Builtin("slice".to_string()));
+        env.define("استبدل".to_string(), Value::Builtin("replace".to_string()));
 
         Self { environment: env }
     }
@@ -362,6 +365,61 @@ impl Interpreter {
                                     }
                                     _ => Err(ControlFlow::Error(
                                         "آخر تعمل مع المصفوفات فقط.".to_string()
+                                    )),
+                                }
+                            }
+
+                            "contains" => {
+                                if evaluated_args.len() != 2 {
+                                    return Err(ControlFlow::Error(
+                                        "يحتوي تحتاج إلى نصين.".to_string()
+                                    ));
+                                }
+
+                                match (&evaluated_args[0], &evaluated_args[1]) {
+                                    (Value::String(text), Value::String(search)) => {
+                                        Ok(Value::Boolean(text.contains(search)))
+                                    }
+                                    _ => Err(ControlFlow::Error(
+                                        "يحتوي تعمل مع النصوص فقط.".to_string()
+                                    )),
+                                }
+                            }
+
+                            "slice" => {
+                                if evaluated_args.len() != 3 {
+                                    return Err(ControlFlow::Error(
+                                        "قطع تحتاج إلى نص وبدايه ونهاية.".to_string()
+                                    ));
+                                }
+
+                                match (&evaluated_args[0], &evaluated_args[1], &evaluated_args[2]) {
+                                    (Value::String(text), Value::Number(start), Value::Number(end)) => {
+                                        let chars: Vec<char> = text.chars().collect();
+                                        let result: String = chars[*start as usize..*end as usize]
+                                            .iter()
+                                            .collect();
+                                        Ok(Value::String(result))
+                                    }
+                                    _ => Err(ControlFlow::Error(
+                                        "قطع تحتاج إلى نص وأرقام.".to_string()
+                                    )),
+                                }
+                            }
+
+                            "replace" => {
+                                if evaluated_args.len() != 3 {
+                                    return Err(ControlFlow::Error(
+                                        "استبدل تحتاج إلى ثلاثة نصوص.".to_string()
+                                    ));
+                                }
+
+                                match (&evaluated_args[0], &evaluated_args[1], &evaluated_args[2]) {
+                                    (Value::String(text), Value::String(old), Value::String(new)) => {
+                                        Ok(Value::String(text.replace(old, new)))
+                                    }
+                                    _ => Err(ControlFlow::Error(
+                                        "استبدل تعمل مع النصوص فقط.".to_string()
                                     )),
                                 }
                             }
