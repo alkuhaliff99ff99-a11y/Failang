@@ -12,6 +12,7 @@ pub enum Value {
         params: Vec<Token>,
         body: Vec<Stmt>,
     },
+    Builtin(String),
     Array(Vec<Value>), // إضافة نوع المصفوفة هنا
     Nil,
 }
@@ -23,6 +24,7 @@ impl fmt::Display for Value {
             Value::String(s) => write!(f, "{}", s),
             Value::Boolean(b) => write!(f, "{}", if *b { "صحيح" } else { "خطأ" }),
             Value::Function { name, .. } => write!(f, "<دالة {}>", name.lexeme),
+            Value::Builtin(name) => write!(f, "<دالة مدمجة {}>", name),
             Value::Nil => write!(f, "عدم"),
             Value::Array(elements) => {
                 let mut result = String::from("[");

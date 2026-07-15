@@ -16,7 +16,12 @@ pub struct Interpreter {
 
 impl Interpreter {
     pub fn new() -> Self {
-        Self { environment: Environment::new() }
+        let mut env = Environment::new();
+
+        env.define("طول".to_string(), Value::Builtin("length".to_string()));
+        env.define("نوع".to_string(), Value::Builtin("type".to_string()));
+
+        Self { environment: env }
     }
 
     pub fn interpret(&mut self, statements: &[Stmt]) -> Result<(), String> {
@@ -270,6 +275,48 @@ impl Interpreter {
                 }
 
                 match callee_val {
+                    Value::Builtin(name) => {
+                        match name.as_str() {
+                            "length" => {
+                                if evaluated_args.len() != 1 {
+                                    return Err(ControlFlow::Error(
+                                        "دالة طول تحتاج إلى وسيط واحد.".to_string()
+                                    ));
+                                }
+
+                                match &evaluated_args[0] {
+                                    Value::Array(items) => Ok(Value::Number(items.len() as f64)),
+                                    Value::String(text) => Ok(Value::Number(text.chars().count() as f64)),
+                                    _ => Err(ControlFlow::Error(
+                                        "دالة طول تعمل مع النصوص والمصفوفات فقط.".to_string()
+                                    )),
+                                }
+                            }
+
+                            "type" => {
+                                if evaluated_args.len() != 1 {
+                                    return Err(ControlFlow::Error(
+                                        "دالة نوع تحتاج إلى وسيط واحد.".to_string()
+                                    ));
+                                }
+
+                                let t = match &evaluated_args[0] {
+                                    Value::Number(_) => "رقم",
+                                    Value::String(_) => "نص",
+                                    Value::Boolean(_) => "منطقي",
+                                    Value::Array(_) => "مصفوفة",
+                                    Value::Function { .. } => "دالة",
+                                    _ => "عدم",
+                                };
+
+                                Ok(Value::String(t.to_string()))
+                            }
+                            _ => Err(ControlFlow::Error(
+                                "دالة مدمجة غير معروفة.".to_string()
+                            )),
+                        }
+                    }
+
                     Value::Function { name: _, params, body } => {
                         if evaluated_args.len() != params.len() {
                             return Err(ControlFlow::Error(format!(
