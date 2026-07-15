@@ -1,5 +1,0 @@
-متغير counter = 0 ;
-طالما counter < 5 {
-    اطبع counter ;
-    counter = counter + 1 ;
-}
