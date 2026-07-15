@@ -389,15 +389,42 @@ impl Parser {
 
     fn call(&mut self) -> Result<Expr, ParseError> {
         let mut expr = self.primary()?;
+
         loop {
             if self.match_kinds(&[TokenKind::LeftParen]) {
                 expr = self.finish_call(expr)?;
-            } else if self.match_kinds(&[TokenKind::LeftBracket]) {
+            } 
+            else if self.match_kinds(&[TokenKind::LeftBracket]) {
                 expr = self.finish_index(expr)?;
-            } else {
+            }
+            else {
                 break;
             }
         }
+
+        // دعم الاستدعاء المبسط:
+        // جمع 10 20
+        if let Expr::Variable(_) = expr {
+            let mut arguments = Vec::new();
+
+            while self.check(&TokenKind::Number)
+                || self.check(&TokenKind::String)
+                || self.check(&TokenKind::Identifier)
+            {
+                arguments.push(self.primary()?);
+            }
+
+            if !arguments.is_empty() {
+                let paren = self.peek().clone();
+
+                return Ok(Expr::Call {
+                    callee: Box::new(expr),
+                    paren,
+                    arguments,
+                });
+            }
+        }
+
         Ok(expr)
     }
 
