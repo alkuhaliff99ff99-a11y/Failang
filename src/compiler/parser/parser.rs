@@ -293,11 +293,24 @@ impl Parser {
         loop {
             if self.match_kinds(&[TokenKind::LeftParen]) {
                 expr = self.finish_call(expr)?;
+            } else if self.match_kinds(&[TokenKind::LeftBracket]) {
+                expr = self.finish_index(expr)?;
             } else {
                 break;
             }
         }
         Ok(expr)
+    }
+
+    fn finish_index(&mut self, callee: Expr) -> Result<Expr, ParseError> {
+        let bracket = self.previous().clone();
+        let index = self.expression()?;
+        self.consume(TokenKind::RightBracket, "متوقع قوس الإغلاق ']' بعد مؤشر/فهرس المصفوفة.")?;
+        Ok(Expr::Index {
+            callee: Box::new(callee),
+            bracket,
+            index: Box::new(index),
+        })
     }
 
     fn finish_call(&mut self, callee: Expr) -> Result<Expr, ParseError> {
@@ -338,6 +351,18 @@ impl Parser {
             let expr = self.expression()?;
             self.consume(TokenKind::RightParen, "متوقع قوس الإغلاق ')' بعد نهاية التعبير الحسابي.")?;
             return Ok(Expr::Grouping(Box::new(expr)));
+        }
+        if self.match_kinds(&[TokenKind::LeftBracket]) {
+            let bracket = self.previous().clone();
+            let mut elements = Vec::new();
+            if !self.check(&TokenKind::RightBracket) {
+                loop {
+                    elements.push(self.expression()?);
+                    if !self.match_kinds(&[TokenKind::Comma]) { break; }
+                }
+            }
+            self.consume(TokenKind::RightBracket, "متوقع قوس الإغلاق ']' بعد عناصر المصفوفة.")?;
+            return Ok(Expr::Array { bracket, elements });
         }
 
         // في حال حدوث رمز غير متوقع بدلاً من الـ panic نلقي بخطأ منظم

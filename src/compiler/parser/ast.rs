@@ -27,6 +27,11 @@ pub enum Expr {
         bracket: Token,
         elements: Vec<Expr>,
     },
+    Index {
+        callee: Box<Expr>,
+        bracket: Token,
+        index: Box<Expr>,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -51,7 +56,6 @@ pub enum Stmt {
         name: Token,
         params: Vec<Token>,
         body: Vec<Stmt>,
-
     },
     Return {
         keyword: Token,

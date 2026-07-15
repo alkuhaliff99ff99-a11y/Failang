@@ -2,7 +2,6 @@ use crate::compiler::parser::ast::{Expr, Stmt};
 use crate::compiler::lexer::{Token, TokenKind};
 use crate::compiler::interpreter::environment::Environment;
 use crate::compiler::interpreter::value::Value;
-use std::sync::Arc;
 
 // هيكل للتحكم في تدفق البرنامج عند مواجهة دالة الإرجاع "return"
 #[derive(Debug, Clone)]
@@ -74,7 +73,6 @@ impl Interpreter {
                 }
             }
             Stmt::Block(statements) => {
-                // تفعيل معالجة الـ block وتمريره
                 for statement in statements {
                     self.execute(statement)?;
                 }
@@ -104,12 +102,10 @@ impl Interpreter {
                 if let Ok(n) = val.trim().parse::<f64>() {
                     return Ok(Value::Number(n));
                 }
-                // معالجة صواب وخطأ والعدم كنصوص قيمية إذا لم يتعرف عليها كمفاتيح بالـ Lexer
                 if val == "true" || val == "صواب" { return Ok(Value::Boolean(true)); }
                 if val == "false" || val == "خطأ" { return Ok(Value::Boolean(false)); }
                 if val == "nil" || val == "عدم" { return Ok(Value::Nil); }
                 
-                // إزالة علامات الاقتباس إن وجدت في النصوص
                 let cleaned = if val.starts_with('"') && val.ends_with('"') {
                     val[1..val.len()-1].to_string()
                 } else {
@@ -126,6 +122,22 @@ impl Interpreter {
                 self.environment.assign(&name.lexeme, val.clone())
                     .map_err(|e| ControlFlow::Error(e))?;
                 Ok(val)
+            }
+            Expr::Unary { operator, right } => {
+                let right_val = self.evaluate(right)?;
+                match operator.kind {
+                    TokenKind::Minus => {
+                        if let Value::Number(n) = right_val {
+                            Ok(Value::Number(-n))
+                        } else {
+                            Err(ControlFlow::Error("خطأ: لا يمكن استخدام علامة السالب إلا مع الأرقام.".to_string()))
+                        }
+                    }
+                    TokenKind::Bang => {
+                        Ok(Value::Boolean(!self.is_truthy(&right_val)))
+                    }
+                    _ => Err(ControlFlow::Error("عملية أحادية غير مدعومة.".to_string()))
+                }
             }
             Expr::Binary { left, operator, right } => {
                 let l = self.evaluate(left)?;
@@ -167,6 +179,38 @@ impl Interpreter {
                 }
             }
             Expr::Grouping(inner) => self.evaluate(inner),
+            Expr::Array { bracket: _, elements } => {
+                let mut evaluated_elements = Vec::new();
+                for el in elements {
+                    evaluated_elements.push(self.evaluate(el)?);
+                }
+                Ok(Value::Array(evaluated_elements))
+            }
+            Expr::Index { callee, bracket: _, index } => {
+                let array_val = self.evaluate(callee)?;
+                let index_val = self.evaluate(index)?;
+
+                match (array_val, index_val) {
+                    (Value::Array(elements), Value::Number(idx)) => {
+                        if idx < 0.0 || idx.fract() != 0.0 {
+                            return Err(ControlFlow::Error("خطأ: يجب أن يكون مؤشر المصفوفة رقماً صحيحاً موجباً.".to_string()));
+                        }
+                        let u_idx = idx as usize;
+                        if u_idx >= elements.len() {
+                            return Err(ControlFlow::Error(format!(
+                                "خطأ: تجاوز حدود المصفوفة. الطول هو {} ولكن تم طلب العنصر ذو المؤشر {}.",
+                                elements.len(),
+                                u_idx
+                            )));
+                        }
+                        Ok(elements[u_idx].clone())
+                    }
+                    (Value::Array(_), _) => {
+                        Err(ControlFlow::Error("خطأ: يجب أن يكون مؤشر المصفوفة رقماً.".to_string()))
+                    }
+                    _ => Err(ControlFlow::Error("خطأ: لا يمكن إجراء عملية الفهرسة على كائن ليس مصفوفة.".to_string())),
+                }
+            }
             Expr::Call { callee, paren: _, arguments } => {
                 let callee_val = self.evaluate(callee)?;
                 
@@ -185,19 +229,14 @@ impl Interpreter {
                             )));
                         }
 
-                        // حفظ البيئة الحالية للدخول في النطاق الخاص بالدالة
                         let previous_env = self.environment.clone();
-                        
-                        // إنشاء نطاق محلي جديد ومغلق وتمرير المتغيرات إليه
                         let mut local_env = Environment::new_with_enclosing(std::sync::Arc::new(std::sync::Mutex::new(previous_env.clone())));
                         for (param, arg_val) in params.iter().zip(evaluated_args.iter()) {
                             local_env.define(param.lexeme.clone(), arg_val.clone());
                         }
 
-                        // تبديل بيئة العمل الحالية بالمحلية
                         self.environment = local_env;
 
-                        // تشغيل جسد الدالة وحصر الـ Return
                         let mut return_value = Value::Nil;
                         for stmt in &body {
                             if let Err(cf) = self.execute(stmt) {
@@ -207,7 +246,6 @@ impl Interpreter {
                                         break;
                                     }
                                     ControlFlow::Error(e) => {
-                                        // استرجاع البيئة القديمة قبل الخروج بالخطأ لمنع تسريب النطاقات
                                         self.environment = previous_env;
                                         return Err(ControlFlow::Error(e));
                                     }
@@ -215,14 +253,12 @@ impl Interpreter {
                             }
                         }
 
-                        // استرجاع البيئة الأصلية بعد الانتهاء
                         self.environment = previous_env;
                         Ok(return_value)
                     }
                     _ => Err(ControlFlow::Error("لا يمكن استدعاء هذا الكائن كدالة.".to_string())),
                 }
             }
-            _ => Err(ControlFlow::Error("تعبير غير مدعوم حالياً في المفسر.".to_string())),
         }
     }
 
