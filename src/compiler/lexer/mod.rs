@@ -6,6 +6,10 @@ pub enum TokenKind {
     Comma, Dot, Minus, Plus, Semicolon, Slash, Star, Percent,
     Bang, BangEqual, Equal, EqualEqual, Greater, GreaterEqual, Less, LessEqual,
     AndAnd, OrOr, Arrow, Colon,
+    
+    // التوكنز الجديدة للتنسيق الحر والمسافات البادئة
+    Newline, Indent, Dedent,
+
     Identifier, String, Number,
     Let, Const, Var, If, Else, While, Print, True, False, Function, Return,
     EOF,
@@ -25,6 +29,10 @@ pub struct Lexer {
     current: usize,
     line: usize,
     keywords: HashMap<String, TokenKind>,
+    
+    // متغيرات تتبع المسافات البادئة والأسطر الجديدة
+    indent_stack: Vec<usize>,
+    at_line_start: bool,
 }
 
 impl Lexer {
@@ -66,19 +74,67 @@ impl Lexer {
             current: 0,
             line: 1,
             keywords,
+            indent_stack: vec![0], // نبدأ بمستوى مسافة 0 كأصل ثابت
+            at_line_start: true,   // الملف يبدأ دائماً من بداية السطر الأول
         }
     }
 
     pub fn scan_tokens(mut self) -> Result<Vec<Token>, String> {
         while !self.is_at_end() {
             self.start = self.current;
-            self.scan_token()?;
+            
+            // 1. فحص وحساب المسافات البادئة إذا كنا في بداية سطر جديد
+            if self.at_line_start {
+                let mut spaces = 0;
+                while !self.is_at_end() && (self.peek() == ' ' || self.peek() == '\t') {
+                    if self.peek() == ' ' {
+                        spaces += 1;
+                    } else if self.peek() == '\t' {
+                        spaces += 4; // نعتبر التبويب Tab بمثابة 4 مسافات
+                    }
+                    self.advance();
+                }
+
+                // إذا وجدنا سطر فارغ تماماً أو تعليق، لا نغير مستويات الـ Indent
+                if self.is_at_end() || self.peek() == '\n' || (self.peek() == '/' && self.peek_next() == '/') {
+                    self.at_line_start = true;
+                    if !self.is_at_end() { self.advance(); } // لتجاوز السطر الجديد الفارغ
+                    continue;
+                }
+
+                let current_indent = *self.indent_stack.last().unwrap_or(&0);
+
+                if spaces > current_indent {
+                    self.indent_stack.push(spaces);
+                    self.add_token(TokenKind::Indent);
+                } else if spaces < current_indent {
+                    while spaces < *self.indent_stack.last().unwrap_or(&0) {
+                        self.indent_stack.pop();
+                        self.add_token(TokenKind::Dedent);
+                    }
+                }
+                self.at_line_start = false;
+            }
+
+            // 2. معالجة التوكن العادي
+            if !self.is_at_end() {
+                self.start = self.current;
+                self.scan_token()?;
+            }
         }
+
+        // عند نهاية الملف (EOF)، نقوم بإغلاق أي كتل مفتوحة (Dedent) وتوليد التوكنز المقابلة لها
+        while self.indent_stack.len() > 1 {
+            self.indent_stack.pop();
+            self.add_token(TokenKind::Dedent);
+        }
+
         self.tokens.push(Token {
             kind: TokenKind::EOF,
             lexeme: "".to_string(),
             line: self.line,
         });
+
         Ok(self.tokens)
     }
 
@@ -144,7 +200,11 @@ impl Lexer {
                 }
             }
             ' ' | '\r' | '\t' | '\u{200E}' | '\u{200F}' | '\u{202B}' | '\u{202C}' => {}
-            '\n' => self.line += 1,
+            '\n' => {
+                self.line += 1;
+                self.add_token(TokenKind::Newline);
+                self.at_line_start = true;
+            }
             '"' => self.string_token()?,
             _ => {
                 if self.is_digit(c) {
@@ -168,8 +228,13 @@ impl Lexer {
             if self.peek() == '\n' { self.line += 1; }
             self.advance();
         }
-        if self.is_at_end() { return Err(format!("نص غير مغلق في السطر {}", self.line)); }
-        self.advance();
+
+        if self.is_at_end() {
+            return Err("سلسلة نصية غير مغلقة.".to_string());
+        }
+
+        self.advance(); // لتجاوز الرمز " المغلق
+
         let value: String = self.source[self.start + 1..self.current - 1].iter().collect();
         self.add_token_with_lexeme(TokenKind::String, value);
         Ok(())
@@ -177,41 +242,34 @@ impl Lexer {
 
     fn number_token(&mut self) {
         while self.is_digit(self.peek()) { self.advance(); }
+
         if self.peek() == '.' && self.is_digit(self.peek_next()) {
             self.advance();
             while self.is_digit(self.peek()) { self.advance(); }
         }
-        let raw: String = self.source[self.start..self.current].iter().collect();
-        // تحويل الأرقام العربية الشرقية لغربية ليفهمها نظام التشغيل والمفسر بمرونة
-        let normalized: String = raw.chars().map(|c| {
-            match c {
-                '٠' => '0', '١' => '1', '٢' => '2', '٣' => '3', '٤' => '4',
-                '٥' => '5', '٦' => '6', '٧' => '7', '٨' => '8', '٩' => '9',
-                _ => c
-            }
-        }).collect();
-        self.add_token_with_lexeme(TokenKind::Number, normalized);
+
+        let value: String = self.source[self.start..self.current].iter().collect();
+        self.add_token_with_lexeme(TokenKind::Number, value);
     }
 
     fn identifier_token(&mut self) {
         while self.peek().is_alphanumeric() || self.peek() == '_' || (self.peek() >= 'ا' && self.peek() <= 'ي') {
             self.advance();
         }
+
         let text: String = self.source[self.start..self.current].iter().collect();
         let kind = self.keywords.get(&text).cloned().unwrap_or(TokenKind::Identifier);
-        self.add_token_with_lexeme(kind, text);
+        self.add_token(kind);
+    }
+
+    fn is_at_end(&self) -> bool {
+        self.current >= self.source.len()
     }
 
     fn advance(&mut self) -> char {
         let c = self.source[self.current];
         self.current += 1;
         c
-    }
-
-    fn match_char(&mut self, expected: char) -> bool {
-        if self.is_at_end() || self.source[self.current] != expected { return false; }
-        self.current += 1;
-        true
     }
 
     fn peek(&self) -> char {
@@ -224,14 +282,27 @@ impl Lexer {
         self.source[self.current + 1]
     }
 
-    fn is_at_end(&self) -> bool { self.current >= self.source.len() }
+    fn match_char(&mut self, expected: char) -> bool {
+        if self.is_at_end() { return false; }
+        if self.source[self.current] != expected { return false; }
+        self.current += 1;
+        true
+    }
 
     fn add_token(&mut self, kind: TokenKind) {
         let lexeme: String = self.source[self.start..self.current].iter().collect();
-        self.tokens.push(Token { kind, lexeme, line: self.line });
+        self.tokens.push(Token {
+            kind,
+            lexeme,
+            line: self.line,
+        });
     }
 
     fn add_token_with_lexeme(&mut self, kind: TokenKind, lexeme: String) {
-        self.tokens.push(Token { kind, lexeme, line: self.line });
+        self.tokens.push(Token {
+            kind,
+            lexeme: lexeme.clone(),
+            line: self.line,
+        });
     }
 }

@@ -13,6 +13,11 @@ pub struct Parser {
 }
 
 impl Parser {
+
+    fn skip_newlines(&mut self) {
+        while self.match_kinds(&[TokenKind::Newline]) {}
+    }
+
     pub fn new(tokens: Vec<Token>) -> Self {
         Self { tokens, current: 0 }
     }
@@ -44,6 +49,12 @@ impl Parser {
     }
 
     fn declaration(&mut self) -> Result<Option<Stmt>, ParseError> {
+        self.skip_newlines();
+
+        if self.match_kinds(&[TokenKind::Indent, TokenKind::Dedent]) {
+            return Ok(None);
+        }
+
         if self.check(&TokenKind::Function) || self.peek().lexeme == "دالة" || self.peek().lexeme == "fn" {
             self.advance();
             return self.function_declaration().map(Some);
@@ -148,32 +159,83 @@ impl Parser {
 
     fn if_statement(&mut self) -> Result<Stmt, ParseError> {
         let condition = self.expression()?;
-        if self.check(&TokenKind::LeftBrace) { self.advance(); }
-        let then_branch = Box::new(Stmt::Block(self.block_statement()?));
+
+        self.consume(
+            TokenKind::Newline,
+            "متوقع سطر جديد بعد شرط إذا."
+        )?;
+
+        let then_branch =
+            Box::new(Stmt::Block(self.block_statement()?));
+
         let mut else_branch = None;
-        if self.peek().lexeme == "والا" || self.peek().lexeme == "إلا" || self.check(&TokenKind::Else) {
+
+        if self.check(&TokenKind::Else)
+            || self.peek().lexeme == "والا"
+            || self.peek().lexeme == "إلا"
+        {
             self.advance();
-            if self.check(&TokenKind::LeftBrace) { self.advance(); }
-            else_branch = Some(Box::new(Stmt::Block(self.block_statement()?)));
+
+            self.consume(
+                TokenKind::Newline,
+                "متوقع سطر جديد بعد وإلا."
+            )?;
+
+            else_branch =
+                Some(Box::new(
+                    Stmt::Block(self.block_statement()?)
+                ));
         }
-        Ok(Stmt::If { condition, then_branch, else_branch })
+
+        Ok(Stmt::If {
+            condition,
+            then_branch,
+            else_branch,
+        })
     }
 
     fn while_statement(&mut self) -> Result<Stmt, ParseError> {
         let condition = self.expression()?;
-        if self.check(&TokenKind::LeftBrace) { self.advance(); }
-        let body = Box::new(Stmt::Block(self.block_statement()?));
-        Ok(Stmt::While { condition, body })
+
+        self.consume(
+            TokenKind::Newline,
+            "متوقع سطر جديد بعد شرط طالما."
+        )?;
+
+        let body =
+            Box::new(Stmt::Block(self.block_statement()?));
+
+        Ok(Stmt::While {
+            condition,
+            body,
+        })
     }
 
     fn block_statement(&mut self) -> Result<Vec<Stmt>, ParseError> {
         let mut statements = Vec::new();
-        while !self.check(&TokenKind::RightBrace) && !self.is_at_end() {
-            if let Some(stmt) = self.declaration()? { 
-                statements.push(stmt); 
+
+        self.skip_newlines();
+
+        self.consume(
+            TokenKind::Indent,
+            "متوقع بداية كتلة برمجية بعد المسافة البادئة."
+        )?;
+
+        self.skip_newlines();
+
+        while !self.check(&TokenKind::Dedent) && !self.is_at_end() {
+            if let Some(stmt) = self.declaration()? {
+                statements.push(stmt);
             }
+
+            self.skip_newlines();
         }
-        self.consume(TokenKind::RightBrace, "متوقع قوس الإغلاق '}' بعد نهاية المقطع البرمجي.")?;
+
+        self.consume(
+            TokenKind::Dedent,
+            "متوقع نهاية الكتلة البرمجية."
+        )?;
+
         Ok(statements)
     }
 

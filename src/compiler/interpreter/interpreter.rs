@@ -1,5 +1,5 @@
 use crate::compiler::parser::ast::{Expr, Stmt};
-use crate::compiler::lexer::{Token, TokenKind};
+use crate::compiler::lexer::TokenKind;
 use crate::compiler::interpreter::environment::Environment;
 use crate::compiler::interpreter::value::Value;
 
