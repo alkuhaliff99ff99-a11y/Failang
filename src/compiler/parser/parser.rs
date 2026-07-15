@@ -192,16 +192,27 @@ impl Parser {
         if self.match_kinds(&[TokenKind::Equal]) || self.peek().lexeme == "=" {
             if self.peek().lexeme == "=" { self.advance(); }
             let value = self.assignment()?;
-            if let Expr::Variable(name) = expr {
-                return Ok(Expr::Assign {
-                    name,
-                    value: Box::new(value),
-                });
+            match expr {
+                Expr::Variable(name) => {
+                    return Ok(Expr::Assign {
+                        name,
+                        value: Box::new(value),
+                    });
+                }
+                Expr::Index { callee, index, .. } => {
+                    return Ok(Expr::IndexAssign {
+                        callee,
+                        index,
+                        value: Box::new(value),
+                    });
+                }
+                _ => {
+                    return Err(ParseError {
+                        token: self.previous().clone(),
+                        message: "هدف الإسناد (Assignment target) غير صالح.".to_string(),
+                    });
+                }
             }
-            return Err(ParseError {
-                token: self.previous().clone(),
-                message: "هدف الإسناد (Assignment target) غير صالح.".to_string(),
-            });
         }
         Ok(expr)
     }
