@@ -26,6 +26,8 @@ impl Interpreter {
         env.define("يحتوي".to_string(), Value::Builtin("contains".to_string()));
         env.define("قطع".to_string(), Value::Builtin("slice".to_string()));
         env.define("استبدل".to_string(), Value::Builtin("replace".to_string()));
+        env.define("نص".to_string(), Value::Builtin("string".to_string()));
+        env.define("رقم".to_string(), Value::Builtin("number".to_string()));
 
         Self { environment: env }
     }
@@ -420,6 +422,46 @@ impl Interpreter {
                                     }
                                     _ => Err(ControlFlow::Error(
                                         "استبدل تعمل مع النصوص فقط.".to_string()
+                                    )),
+                                }
+                            }
+
+                            "string" => {
+                                if evaluated_args.len() != 1 {
+                                    return Err(ControlFlow::Error(
+                                        "نص تحتاج إلى قيمة واحدة.".to_string()
+                                    ));
+                                }
+
+                                match &evaluated_args[0] {
+                                    Value::Number(n) => Ok(Value::String(n.to_string())),
+                                    Value::Boolean(b) => Ok(Value::String(
+                                        if *b { "صحيح".to_string() } else { "خطأ".to_string() }
+                                    )),
+                                    Value::String(s) => Ok(Value::String(s.clone())),
+                                    other => Ok(Value::String(format!("{}", other))),
+                                }
+                            }
+
+                            "number" => {
+                                if evaluated_args.len() != 1 {
+                                    return Err(ControlFlow::Error(
+                                        "رقم تحتاج إلى قيمة واحدة.".to_string()
+                                    ));
+                                }
+
+                                match &evaluated_args[0] {
+                                    Value::String(s) => {
+                                        match s.parse::<f64>() {
+                                            Ok(n) => Ok(Value::Number(n)),
+                                            Err(_) => Err(ControlFlow::Error(
+                                                "لا يمكن تحويل النص إلى رقم.".to_string()
+                                            )),
+                                        }
+                                    }
+                                    Value::Number(n) => Ok(Value::Number(*n)),
+                                    _ => Err(ControlFlow::Error(
+                                        "رقم تعمل مع النصوص والأرقام فقط.".to_string()
                                     )),
                                 }
                             }
