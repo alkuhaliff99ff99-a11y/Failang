@@ -28,6 +28,14 @@ impl Parser {
         let mut errors = Vec::new();
 
         while !self.is_at_end() {
+
+            // تجاهل الأسطر الجديدة بين التعليمات
+            while self.match_kinds(&[TokenKind::Newline]) {}
+
+            if self.is_at_end() {
+                break;
+            }
+
             match self.declaration() {
                 Ok(stmt) => {
                     if let Some(s) = stmt {
@@ -68,39 +76,57 @@ impl Parser {
     }
 
     fn function_declaration(&mut self) -> Result<Stmt, ParseError> {
-        let name = self.consume(TokenKind::Identifier, "متوقع اسم الدالة بعد الإعلان.")?.clone();
-        self.consume(TokenKind::LeftParen, "متوقع قوس '(' بعد اسم الدالة.")?;
-        
+        let name = self.consume(
+            TokenKind::Identifier,
+            "متوقع اسم الدالة بعد الإعلان."
+        )?.clone();
+
         let mut params = Vec::new();
-        if !self.check(&TokenKind::RightParen) {
-            loop {
-                let param = self.consume(TokenKind::Identifier, "متوقع اسم المعامل (Parameter).")?.clone();
-                params.push(param);
-                if !self.match_kinds(&[TokenKind::Comma]) { break; }
-            }
-        }
-        self.consume(TokenKind::RightParen, "متوقع قوس ')' بعد المعاملات.")?;
 
-        let is_colon_style = self.match_kinds(&[TokenKind::Colon]);
-        if !is_colon_style {
-            self.match_kinds(&[TokenKind::LeftBrace]);
-        }
+        // دعم الصيغة القديمة: دالة جمع(أ, ب)
+        if self.match_kinds(&[TokenKind::LeftParen]) {
+            if !self.check(&TokenKind::RightParen) {
+                loop {
+                    let param = self.consume(
+                        TokenKind::Identifier,
+                        "متوقع اسم المعامل."
+                    )?.clone();
 
-        let mut body = Vec::new();
-        if is_colon_style {
-            while !self.is_at_end() {
-                if self.peek().lexeme == "متغير" || self.peek().lexeme == "اطبع" || self.check(&TokenKind::Print) || self.check(&TokenKind::Var) {
-                    break;
-                }
-                if let Some(stmt) = self.declaration()? {
-                    body.push(stmt);
+                    params.push(param);
+
+                    if !self.match_kinds(&[TokenKind::Comma]) {
+                        break;
+                    }
                 }
             }
-        } else {
-            body = self.block_statement()?;
+
+            self.consume(
+                TokenKind::RightParen,
+                "متوقع قوس إغلاق."
+            )?;
+
+            self.match_kinds(&[TokenKind::Colon]);
+        }
+        // دعم الصيغة الجديدة:
+        // دالة جمع أ ب
+        else {
+            while self.check(&TokenKind::Identifier) {
+                params.push(self.advance().clone());
+            }
         }
 
-        Ok(Stmt::Function { name, params, body })
+        self.consume(
+            TokenKind::Newline,
+            "متوقع سطر جديد بعد تعريف الدالة."
+        )?;
+
+        let body = self.block_statement()?;
+
+        Ok(Stmt::Function {
+            name,
+            params,
+            body,
+        })
     }
 
     fn var_declaration(&mut self) -> Result<Stmt, ParseError> {
