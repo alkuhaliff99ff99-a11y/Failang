@@ -20,6 +20,9 @@ impl Interpreter {
 
         env.define("طول".to_string(), Value::Builtin("length".to_string()));
         env.define("نوع".to_string(), Value::Builtin("type".to_string()));
+        env.define("أضف".to_string(), Value::Builtin("append".to_string()));
+        env.define("أول".to_string(), Value::Builtin("first".to_string()));
+        env.define("آخر".to_string(), Value::Builtin("last".to_string()));
 
         Self { environment: env }
     }
@@ -311,6 +314,58 @@ impl Interpreter {
 
                                 Ok(Value::String(t.to_string()))
                             }
+                            "append" => {
+                                if evaluated_args.len() != 2 {
+                                    return Err(ControlFlow::Error(
+                                        "دالة أضف تحتاج إلى اسم مصفوفة وقيمة.".to_string()
+                                    ));
+                                }
+
+                                if let Expr::Variable(name) = &arguments[0] {
+                                    let mut items = match evaluated_args[0].clone() {
+                                        Value::Array(v) => v,
+                                        _ => return Err(ControlFlow::Error(
+                                            "أول وسيط في أضف يجب أن يكون مصفوفة.".to_string()
+                                        )),
+                                    };
+
+                                    items.push(evaluated_args[1].clone());
+
+                                    self.environment.assign(
+                                        &name.lexeme,
+                                        Value::Array(items.clone())
+                                    ).map_err(|e| ControlFlow::Error(e))?;
+
+                                    Ok(Value::Array(items))
+                                } else {
+                                    Err(ControlFlow::Error(
+                                        "أضف تحتاج إلى اسم مصفوفة.".to_string()
+                                    ))
+                                }
+                            }
+
+                            "first" => {
+                                match &evaluated_args[0] {
+                                    Value::Array(items) => {
+                                        Ok(items.first().cloned().unwrap_or(Value::Nil))
+                                    }
+                                    _ => Err(ControlFlow::Error(
+                                        "أول تعمل مع المصفوفات فقط.".to_string()
+                                    )),
+                                }
+                            }
+
+                            "last" => {
+                                match &evaluated_args[0] {
+                                    Value::Array(items) => {
+                                        Ok(items.last().cloned().unwrap_or(Value::Nil))
+                                    }
+                                    _ => Err(ControlFlow::Error(
+                                        "آخر تعمل مع المصفوفات فقط.".to_string()
+                                    )),
+                                }
+                            }
+
                             _ => Err(ControlFlow::Error(
                                 "دالة مدمجة غير معروفة.".to_string()
                             )),
