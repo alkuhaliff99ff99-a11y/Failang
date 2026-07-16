@@ -213,6 +213,7 @@ impl Parser {
             "متوقع سطر جديد بعد شرط طالما."
         )?;
 
+        self.skip_newlines();
         let body = Box::new(Stmt::Block(self.block_statement()?));
 
         Ok(Stmt::While {
