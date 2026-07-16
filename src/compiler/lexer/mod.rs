@@ -59,6 +59,8 @@ impl Lexer {
         keywords.insert("والا".to_string(), TokenKind::Else);
         keywords.insert("طالما".to_string(), TokenKind::While);
         keywords.insert("اطبع".to_string(), TokenKind::Print);
+        keywords.insert("اكتب".to_string(), TokenKind::Print);
+        keywords.insert("print".to_string(), TokenKind::Print);
         keywords.insert("صحيح".to_string(), TokenKind::True);
         keywords.insert("صواب".to_string(), TokenKind::True);
         keywords.insert("خطأ".to_string(), TokenKind::False);

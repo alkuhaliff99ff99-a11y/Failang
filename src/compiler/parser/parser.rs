@@ -149,7 +149,7 @@ impl Parser {
             self.advance();
             return self.while_statement();
         }
-        if self.check(&TokenKind::Print) || self.peek().lexeme == "اطبع" || self.peek().lexeme == "print" {
+        if self.check(&TokenKind::Print) || self.peek().lexeme == "اطبع" || self.peek().lexeme == "اكتب" || self.peek().lexeme == "print" {
             self.advance();
             return self.print_statement();
         }
@@ -632,7 +632,7 @@ fn while_statement(&mut self) -> Result<Stmt, ParseError> {
             }
 
             let lex = &self.peek().lexeme;
-            if lex == "دالة" || lex == "متغير" || lex == "إذا" || lex == "طالما" || lex == "اطبع" || lex == "ارجع" {
+            if lex == "دالة" || lex == "متغير" || lex == "إذا" || lex == "طالما" || lex == "اطبع" || lex == "اكتب" || lex == "ارجع" {
                 return;
             }
 
