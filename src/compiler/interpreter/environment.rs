@@ -48,3 +48,9 @@ impl Environment {
         Err(format!("محاولة تعيين قيمة لمتغير غير معرف '{}'", name))
     }
 }
+
+impl Default for Environment {
+    fn default() -> Self {
+        Self::new()
+    }
+}

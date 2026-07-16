@@ -222,7 +222,7 @@ impl Lexer {
             _ => {
                 if self.is_digit(c) {
                     self.number_token();
-                } else if c.is_alphabetic() || c == '_' || (c >= 'ا' && c <= 'ي') {
+                } else if c.is_alphabetic() || c == '_' || ('ا'..='ي').contains(&c) {
                     self.identifier_token();
                 } else {
                     return Err(format!("رموز غير مدعومة في السطر {}: '{}'", self.line, c));
@@ -233,7 +233,7 @@ impl Lexer {
     }
 
     fn is_digit(&self, c: char) -> bool {
-        c.is_digit(10) || (c >= '٠' && c <= '٩')
+        c.is_ascii_digit() || ('٠'..='٩').contains(&c)
     }
 
     fn string_token(&mut self) -> Result<(), String> {

@@ -128,10 +128,10 @@ impl Interpreter {
             }
             Expr::Variable(name) => {
                 self.environment.get(&name.lexeme)
-                    .map_err(|e| ControlFlow::Error(e))
+                    .map_err(ControlFlow::Error)
             }
             Expr::IndexAssign { callee, index, value } => {
-                let evaluated_val = self.evaluate(&value)?;
+                let evaluated_val = self.evaluate(value)?;
                 let evaluated_index = self.evaluate(index)?;
 
                 let idx = match evaluated_index {
@@ -141,7 +141,7 @@ impl Interpreter {
 
                 if let Expr::Variable(name) = &**callee {
                     let mut arr_val = self.environment.get(&name.lexeme)
-                        .map_err(|e| ControlFlow::Error(e))?;
+                        .map_err(ControlFlow::Error)?;
 
                     if let Value::Array(ref mut elements) = arr_val {
                         if idx >= elements.len() {
@@ -153,7 +153,7 @@ impl Interpreter {
                         }
                         elements[idx] = evaluated_val.clone();
                         self.environment.assign(&name.lexeme, Value::Array(elements.clone()))
-                            .map_err(|e| ControlFlow::Error(e))?;
+                            .map_err(ControlFlow::Error)?;
                         Ok(evaluated_val)
                     } else {
                         Err(ControlFlow::Error("لا يمكن تعديل فهرس لمتغير ليس مصفوفة.".to_string()))
@@ -162,10 +162,10 @@ impl Interpreter {
                     Err(ControlFlow::Error("الهدف المحدد للتعديل غير صالح.".to_string()))
                 }
             },
-            &Expr::Assign { ref name, ref value } => {
-                let val = self.evaluate(&value)?;
+            Expr::Assign { name, value } => {
+                let val = self.evaluate(value)?;
                 self.environment.assign(&name.lexeme, val.clone())
-                    .map_err(|e| ControlFlow::Error(e))?;
+                    .map_err(ControlFlow::Error)?;
                 Ok(val)
             }
             Expr::Unary { operator, right } => {
@@ -370,5 +370,11 @@ impl Interpreter {
             Value::Array(items) => !items.is_empty(),
             _ => true,
         }
+    }
+}
+
+impl Default for Interpreter {
+    fn default() -> Self {
+        Self::new()
     }
 }
