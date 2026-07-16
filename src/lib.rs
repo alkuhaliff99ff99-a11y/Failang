@@ -1,2 +1,4 @@
-mod diagnostics;
 pub mod compiler;
+mod diagnostics;
+
+pub mod runtime;

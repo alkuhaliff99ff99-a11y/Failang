@@ -1,1 +1,8 @@
 /target
+
+# Build
+target/
+
+# Temporary backups
+backup_before_structure_*
+Failang_old_backup_*

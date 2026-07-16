@@ -1,7 +1,7 @@
+use crate::runtime::value::Value;
 use std::cell::RefCell;
-use std::rc::Rc;
 use std::collections::HashMap;
-use crate::compiler::interpreter::value::Value; // تأكد من مطابقة مسار الـ Value لديك
+use std::rc::Rc; // تأكد من مطابقة مسار الـ Value لديك
 
 #[derive(Clone, Debug)]
 pub struct Environment {
@@ -9,6 +9,12 @@ pub struct Environment {
     values: HashMap<String, Value>,
     // مؤشر آمن للـ Scope الأب (العلوي)
     pub enclosing: Option<Rc<RefCell<Environment>>>,
+}
+
+impl Default for Environment {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl Environment {

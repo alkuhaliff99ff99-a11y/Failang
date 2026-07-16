@@ -1,6 +1,6 @@
+use fsl::compiler::ast::{Expr, Stmt};
 use fsl::compiler::lexer::Lexer;
 use fsl::compiler::parser::Parser;
-use fsl::compiler::parser::ast::{Expr, Stmt};
 
 fn parse_source(source: &str) -> Vec<Stmt> {
     let lexer = Lexer::new(source);

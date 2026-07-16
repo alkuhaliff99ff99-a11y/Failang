@@ -1,4 +1,4 @@
-use crate::compiler::parser::ast::{Expr, Stmt};
+use crate::compiler::ast::{Expr, Stmt};
 use crate::compiler::parser::token::Token;
 use std::collections::HashMap;
 

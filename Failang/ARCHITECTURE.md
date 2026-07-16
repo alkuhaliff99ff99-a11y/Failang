@@ -1,3 +1,0 @@
-# Architecture
-
-Failang Documentation.

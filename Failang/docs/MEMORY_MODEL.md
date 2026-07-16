@@ -1,3 +1,0 @@
-# Memory Model
-
-Failang Documentation.
