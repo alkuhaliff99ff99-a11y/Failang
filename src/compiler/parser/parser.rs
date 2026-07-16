@@ -180,6 +180,7 @@ impl Parser {
             Stmt::Block(self.block_statement()?)
         );
 
+        self.skip_newlines();
         let mut else_branch = None;
 
         if self.match_kinds(&[TokenKind::Else]) {
