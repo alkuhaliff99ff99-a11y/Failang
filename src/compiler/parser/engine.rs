@@ -501,7 +501,7 @@ impl Parser {
     }
 
     fn is_at_end(&self) -> bool {
-        self.peek().kind == TokenKind::EOF
+        self.peek().kind == TokenKind::Eof
     }
 
     pub fn peek(&self) -> &Token {
