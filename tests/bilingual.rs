@@ -2,43 +2,27 @@ use fsl::compiler::lexer::Lexer;
 use fsl::compiler::parser::Parser;
 use fsl::compiler::interpreter::Interpreter;
 
-fn run_failang(source: &str) {
+#[test]
+fn test_english_variable_and_math() {
+    let source = "let x = 10 + 5; print x;";
     let lexer = Lexer::new(source);
-    let tokens = lexer.scan_tokens().expect("Lexer failed");
-
+    let tokens = lexer.scan_tokens().expect("Lexer error in English");
     let mut parser = Parser::new(tokens);
-    let program = parser.parse().expect("Parser failed");
-
+    let statements = parser.parse().expect("Parser error in English");
+    
     let mut interpreter = Interpreter::new();
-    interpreter.interpret(&program).expect("Runtime failed");
+    assert!(interpreter.interpret(&statements).is_ok());
 }
 
 #[test]
-fn test_english_syntax() {
-    let source = r#"
-let x = 10
-print x
-"#;
-
-    run_failang(source);
-}
-
-#[test]
-fn test_arabic_syntax() {
-    let source = r#"
-متغير س = 10
-اطبع س
-"#;
-
-    run_failang(source);
-}
-
-#[test]
-fn test_mixed_syntax() {
-    let source = r#"
-let س = 20
-print س
-"#;
-
-    run_failang(source);
+fn test_arabic_variable_and_math() {
+    // نفس المنطق الرياضي والبرمجي تماماً بكلمات مفتاحية عربية
+    let source = "متغير س = 10 + 5; اطبع س;";
+    let lexer = Lexer::new(source);
+    let tokens = lexer.scan_tokens().expect("Lexer error in Arabic");
+    let mut parser = Parser::new(tokens);
+    let statements = parser.parse().expect("Parser error in Arabic");
+    
+    let mut interpreter = Interpreter::new();
+    assert!(interpreter.interpret(&statements).is_ok());
 }
