@@ -1,3 +1,4 @@
+use crate::diagnostics::error::DiagnosticError;
 use crate::compiler::parser::ast::{Expr, Stmt};
 use crate::compiler::lexer::TokenKind;
 use crate::compiler::interpreter::environment::Environment;
@@ -128,7 +129,7 @@ impl Interpreter {
             }
             Expr::Variable(name) => {
                 self.environment.get(&name.lexeme)
-                    .map_err(ControlFlow::Error)
+                    .ok_or_else(|| ControlFlow::Error(format!("المتغير '{}' غير معرف.", name.lexeme)))
             }
             Expr::IndexAssign { callee, index, value } => {
                 let evaluated_val = self.evaluate(value)?;
@@ -136,30 +137,26 @@ impl Interpreter {
 
                 let idx = match evaluated_index {
                     Value::Number(n) => n as usize,
-                    _ => return Err(ControlFlow::Error("يجب أن يكون الفهرس رقماً صحيحاً.".to_string())),
+                    _ => return Err(ControlFlow::Error(DiagnosticError::new("يجب أن يكون الفهرس رقماً صحيحاً.", "Index must be an integer.").display())),
                 };
 
                 if let Expr::Variable(name) = &**callee {
                     let mut arr_val = self.environment.get(&name.lexeme)
-                        .map_err(ControlFlow::Error)?;
+                        .ok_or_else(|| ControlFlow::Error(format!("المتغير '{}' غير معرف.", name.lexeme)))?;
 
                     if let Value::Array(ref mut elements) = arr_val {
                         if idx >= elements.len() {
-                            return Err(ControlFlow::Error(format!(
-                                "خارج حدود المصفوفة: طول المصفوفة هو {} والفهرس المطلوب هو {}.",
-                                elements.len(),
-                                idx
-                            )));
+                            return Err(ControlFlow::Error(DiagnosticError::new(&format!("خارج حدود المصفوفة: طول المصفوفة هو {} والفهرس المطلوب هو {}.", elements.len(), idx), &format!("Index out of bounds: array length is {} and requested index is {}.", elements.len(), idx)).display()));
                         }
                         elements[idx] = evaluated_val.clone();
                         self.environment.assign(&name.lexeme, Value::Array(elements.clone()))
                             .map_err(ControlFlow::Error)?;
                         Ok(evaluated_val)
                     } else {
-                        Err(ControlFlow::Error("لا يمكن تعديل فهرس لمتغير ليس مصفوفة.".to_string()))
+                        Err(ControlFlow::Error(DiagnosticError::new("لا يمكن تعديل فهرس لمتغير ليس مصفوفة.", "Cannot assign an index to a non-array variable.").display()))
                     }
                 } else {
-                    Err(ControlFlow::Error("الهدف المحدد للتعديل غير صالح.".to_string()))
+                    Err(ControlFlow::Error(DiagnosticError::new("الهدف المحدد للتعديل غير صالح.", "Invalid assignment target.").display()))
                 }
             },
             Expr::Assign { name, value } => {
@@ -175,7 +172,7 @@ impl Interpreter {
                         if let Value::Number(n) = right_val {
                             Ok(Value::Number(-n))
                         } else {
-                            Err(ControlFlow::Error("خطأ: لا يمكن استخدام علامة السالب إلا مع الأرقام.".to_string()))
+                            Err(ControlFlow::Error(DiagnosticError::new("خطأ: لا يمكن استخدام علامة السالب إلا مع الأرقام.", "Error: Minus operator can only be used with numbers.").display()))
                         }
                     }
                     TokenKind::Bang => {
@@ -207,7 +204,7 @@ impl Interpreter {
                             TokenKind::Star => Ok(Value::Number(lv * rv)),
                             TokenKind::Slash => {
                                 if rv == 0.0 {
-                                    return Err(ControlFlow::Error("خطأ: لا يمكن القسمة على صفر".to_string()));
+                                    return Err(ControlFlow::Error(DiagnosticError::new("خطأ: لا يمكن القسمة على صفر.", "Error: Cannot divide by zero.").display()));
                                 }
                                 Ok(Value::Number(lv / rv))
                             }
@@ -219,7 +216,7 @@ impl Interpreter {
                             lv.push_str(&rv);
                             Ok(Value::String(lv))
                         } else {
-                            Err(ControlFlow::Error("العملية الوحيدة المتاحة للنصوص هي الجمع (+)".to_string()))
+                            Err(ControlFlow::Error(DiagnosticError::new("العملية الوحيدة المتاحة للنصوص هي الجمع (+)", "The only available operation for strings is addition (+).").display()))
                         }
                     }
                     (Value::String(mut lv), Value::Number(rv)) => {
@@ -227,7 +224,7 @@ impl Interpreter {
                             lv.push_str(&rv.to_string());
                             Ok(Value::String(lv))
                         } else {
-                            Err(ControlFlow::Error("العملية الوحيدة المتاحة للنصوص هي الجمع (+)".to_string()))
+                            Err(ControlFlow::Error(DiagnosticError::new("العملية الوحيدة المتاحة للنصوص هي الجمع (+)", "The only available operation for strings is addition (+).").display()))
                         }
                     }
                     (Value::Boolean(lb), Value::Boolean(rb)) => {
@@ -237,7 +234,14 @@ impl Interpreter {
                             _ => Err(ControlFlow::Error(format!("مشغل غير مدعوم: {:?}", operator.kind))),
                         }
                     }
-                    (left_val, right_val) => Err(ControlFlow::Error(format!("خطأ حسابي: لا يمكن إجراء عملية بين {:?} و {:?}", left_val, right_val))),
+                    (left_val, right_val) => {
+                        let left_type = left_val.type_of();
+                        let right_type = right_val.type_of();
+                        Err(ControlFlow::Error(DiagnosticError::new(
+                            &format!("خطأ حسابي: لا يمكن إجراء العملية بين نوع ({}) ونوع ({}).", left_type, right_type),
+                            &format!("Arithmetic error: Cannot perform operation between ({}) and ({}).", left_type, right_type)
+                        ).display()))
+                    }
                 }
             }
             Expr::Grouping(inner) => self.evaluate(inner),
@@ -255,7 +259,7 @@ impl Interpreter {
                 match (array_val, index_val) {
                     (Value::Array(elements), Value::Number(idx)) => {
                         if idx < 0.0 || idx.fract() != 0.0 {
-                            return Err(ControlFlow::Error("خطأ: يجب أن يكون مؤشر المصفوفة رقماً صحيحاً موجباً.".to_string()));
+                            return Err(ControlFlow::Error(DiagnosticError::new("خطأ: يجب أن يكون مؤشر المصفوفة رقماً صحيحاً موجباً.", "Error: Array index must be a positive integer.").display()));
                         }
                         let u_idx = idx as usize;
                         if u_idx >= elements.len() {
@@ -268,9 +272,9 @@ impl Interpreter {
                         Ok(elements[u_idx].clone())
                     }
                     (Value::Array(_), _) => {
-                        Err(ControlFlow::Error("خطأ: يجب أن يكون مؤشر المصفوفة رقماً.".to_string()))
+                        Err(ControlFlow::Error(DiagnosticError::new("خطأ: يجب أن يكون مؤشر المصفوفة رقماً.", "Error: Array index must be a number.").display()))
                     }
-                    _ => Err(ControlFlow::Error("خطأ: لا يمكن إجراء عملية الفهرسة على كائن ليس مصفوفة.".to_string())),
+                    _ => Err(ControlFlow::Error(DiagnosticError::new("خطأ: لا يمكن إجراء عملية الفهرسة على كائن ليس مصفوفة.", "Error: Cannot index a non-array object.").display())),
                 }
             }
             Expr::Call { callee, paren: _, arguments } => {
@@ -284,17 +288,17 @@ impl Interpreter {
                         match name.as_str() {
                             "length" => {
                                 if evaluated_args.len() != 1 {
-                                    return Err(ControlFlow::Error("دالة طول تحتاج إلى وسيط واحد.".to_string()));
+                                    return Err(ControlFlow::Error(DiagnosticError::new("دالة طول تحتاج إلى وسيط واحد.", "len() function requires exactly one argument.").display()));
                                 }
                                 match &evaluated_args[0] {
                                     Value::Array(items) => Ok(Value::Number(items.len() as f64)),
                                     Value::String(text) => Ok(Value::Number(text.chars().count() as f64)),
-                                    _ => Err(ControlFlow::Error("دالة طول تستقبل مصفوفة أو نصاً فقط.".to_string())),
+                                    _ => Err(ControlFlow::Error(DiagnosticError::new("دالة طول تستقبل مصفوفة أو نصاً فقط.", "len() function only accepts arrays or strings.").display())),
                                 }
                             }
                             "type" => {
                                 if evaluated_args.len() != 1 {
-                                    return Err(ControlFlow::Error("دالة نوع تحتاج إلى وسيط واحد.".to_string()));
+                                    return Err(ControlFlow::Error(DiagnosticError::new("دالة نوع تحتاج إلى وسيط واحد.", "type() function requires exactly one argument.").display()));
                                 }
                                 match &evaluated_args[0] {
                                     Value::Number(_) => Ok(Value::String("رقم".to_string())),
@@ -308,13 +312,13 @@ impl Interpreter {
                             }
                             "string" => {
                                 if evaluated_args.len() != 1 {
-                                    return Err(ControlFlow::Error("دالة نص تحتاج إلى وسيط واحد.".to_string()));
+                                    return Err(ControlFlow::Error(DiagnosticError::new("دالة نص تحتاج إلى وسيط واحد.", "str() function requires exactly one argument.").display()));
                                 }
                                 Ok(Value::String(evaluated_args[0].to_string()))
                             }
                             "number" => {
                                 if evaluated_args.len() != 1 {
-                                    return Err(ControlFlow::Error("دالة رقم تحتاج إلى وسيط واحد.".to_string()));
+                                    return Err(ControlFlow::Error(DiagnosticError::new("دالة رقم تحتاج إلى وسيط واحد.", "num() function requires exactly one argument.").display()));
                                 }
                                 match &evaluated_args[0] {
                                     Value::Number(n) => Ok(Value::Number(*n)),
@@ -322,10 +326,10 @@ impl Interpreter {
                                         if let Ok(n) = s.trim().parse::<f64>() {
                                             Ok(Value::Number(n))
                                         } else {
-                                            Err(ControlFlow::Error(format!("تعذر تحويل النص '{}' إلى رقم.", s)))
+                                            Err(ControlFlow::Error(DiagnosticError::new(&format!("تعذر تحويل النص {} إلى رقم.", s), &format!("Could not convert string {} to number.", s)).display()))
                                         }
                                     }
-                                    _ => Err(ControlFlow::Error("دالة رقم تستقبل رقماً أو نصاً قابلاً للتحويل فقط.".to_string())),
+                                    _ => Err(ControlFlow::Error(DiagnosticError::new("دالة رقم تستقبل رقماً أو نصاً قابلاً للتحويل فقط.", "num() function only accepts a number or a convertible string.").display())),
                                 }
                             }
                             _ => Err(ControlFlow::Error(format!("دالة مدمجة غير معرفة: {}", name))),
@@ -340,7 +344,7 @@ impl Interpreter {
                             )));
                         }
                         
-                        let mut local_env = Environment::new_with_enclosing(std::sync::Arc::new(std::sync::Mutex::new(self.environment.clone())));
+                        let mut local_env = Environment::new_with_enclosing(std::rc::Rc::new(std::cell::RefCell::new(self.environment.clone())));
                         for (param, arg) in params.iter().zip(evaluated_args.iter()) {
                             local_env.define(param.lexeme.clone(), arg.clone());
                         }
@@ -355,7 +359,7 @@ impl Interpreter {
                             Err(e) => Err(e),
                         }
                     }
-                    _ => Err(ControlFlow::Error("لا يمكن استدعاء كائن غير قابل للاستدعاء.".to_string())),
+                    _ => Err(ControlFlow::Error(DiagnosticError::new("لا يمكن استدعاء كائن غير قابل للاستدعاء.", "Cannot call a non-callable object.").display())),
                 }
             }
         }
