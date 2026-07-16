@@ -1,10 +1,10 @@
-use crate::compiler::interpreter::environment::Environment;
-use crate::compiler::interpreter::value::Value;
+use crate::compiler::ast::{Expr, Stmt};
 use crate::compiler::lexer::TokenKind;
-use crate::compiler::parser::ast::{Expr, Stmt};
 use crate::diagnostics::error::translate;
 use crate::diagnostics::error::DiagnosticError;
 use crate::diagnostics::reporter::report;
+use crate::runtime::environment::Environment;
+use crate::runtime::value::Value;
 
 #[derive(Debug, Clone)]
 pub enum ControlFlow {
