@@ -1,6 +1,6 @@
-use std::fmt;
 use crate::compiler::lexer::Token;
 use crate::compiler::parser::Stmt;
+use std::fmt;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Value {

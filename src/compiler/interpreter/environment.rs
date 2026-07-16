@@ -1,7 +1,7 @@
+use crate::compiler::interpreter::value::Value;
 use std::cell::RefCell;
-use std::rc::Rc;
 use std::collections::HashMap;
-use crate::compiler::interpreter::value::Value; // تأكد من مطابقة مسار الـ Value لديك
+use std::rc::Rc; // تأكد من مطابقة مسار الـ Value لديك
 
 #[derive(Clone, Debug)]
 pub struct Environment {
@@ -59,5 +59,12 @@ impl Environment {
         }
 
         Err(format!("المتغير '{}' غير معرف برمجياً.", name))
+    }
+}
+
+
+impl Default for Environment {
+    fn default() -> Self {
+        Self::new()
     }
 }

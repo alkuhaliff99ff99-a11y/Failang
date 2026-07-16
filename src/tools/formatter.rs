@@ -5,14 +5,13 @@ pub struct Formatter;
 
 impl Formatter {
     pub fn format_file<P: AsRef<Path>>(path: P) -> Result<(), String> {
-        let content = fs::read_to_string(&path)
-            .map_err(|e| format!("Failed to read file: {}", e))?;
-        
+        let content =
+            fs::read_to_string(&path).map_err(|e| format!("Failed to read file: {}", e))?;
+
         let formatted = Self::format_source(&content);
-        
-        fs::write(&path, formatted)
-            .map_err(|e| format!("Failed to write file: {}", e))?;
-        
+
+        fs::write(&path, formatted).map_err(|e| format!("Failed to write file: {}", e))?;
+
         Ok(())
     }
 
@@ -88,7 +87,7 @@ impl Formatter {
 
     fn format_operators(part: &str) -> String {
         let mut formatted = part.to_string();
-        
+
         // 1. تنسيق العمليات الحسابية الأساسية (+, -, *, /)
         let math_ops = vec!["+", "-", "*", "/"];
         for op in math_ops {
@@ -125,8 +124,12 @@ impl Formatter {
         formatted = formatted.replace("__LESS_EQUAL__", "<=");
 
         // 3. توحيد الفراغات حول "يساوي" و "مساوي" العربية
-        formatted = formatted.replace(" يساوي ", "يساوي").replace("يساوي", " يساوي ");
-        formatted = formatted.replace(" مساوي ", "مساوي").replace("مساوي", " مساوي ");
+        formatted = formatted
+            .replace(" يساوي ", "يساوي")
+            .replace("يساوي", " يساوي ");
+        formatted = formatted
+            .replace(" مساوي ", "مساوي")
+            .replace("مساوي", " مساوي ");
 
         // تنظيف الفراغات المتكررة الناتجة عن التنسيق
         while formatted.contains("  ") {

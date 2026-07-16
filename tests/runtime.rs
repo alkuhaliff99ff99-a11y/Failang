@@ -1,6 +1,6 @@
+use fsl::compiler::interpreter::Interpreter;
 use fsl::compiler::lexer::Lexer;
 use fsl::compiler::parser::Parser;
-use fsl::compiler::interpreter::Interpreter;
 
 fn run_failang(source: &str) {
     let lexer = Lexer::new(source);
@@ -11,9 +11,7 @@ fn run_failang(source: &str) {
 
     let mut interpreter = Interpreter::new();
 
-    interpreter
-        .interpret(&program)
-        .expect("Runtime failed");
+    interpreter.interpret(&program).expect("Runtime failed");
 }
 
 #[test]
@@ -99,20 +97,26 @@ print sum([1, 2, 3])
 #[test]
 fn test_type_casting_number() {
     // 1. تحويل نص يحتوي على رقم
-    run_failang(r#"
+    run_failang(
+        r#"
     متغير س = رقم("123.45")
     اكتب(س)
-    "#);
+    "#,
+    );
 
     // 2. تحويل منطقي (صواب) إلى رقم
-    run_failang(r#"
+    run_failang(
+        r#"
     متغير ص = رقم(صواب)
     اكتب(ص)
-    "#);
+    "#,
+    );
 
     // 3. تحويل عدم إلى رقم
-    run_failang(r#"
+    run_failang(
+        r#"
     متغير ع = رقم(عدم)
     اكتب(ع)
-    "#);
+    "#,
+    );
 }
