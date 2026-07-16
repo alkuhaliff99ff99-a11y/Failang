@@ -22,14 +22,11 @@ impl Parser {
         Self { tokens, current: 0 }
     }
 
-    // الدالة الرئيسية تعود الآن بـ Result
     pub fn parse(&mut self) -> Result<Vec<Stmt>, Vec<ParseError>> {
         let mut statements = Vec::new();
         let mut errors = Vec::new();
 
         while !self.is_at_end() {
-
-            // تجاهل الأسطر الجديدة بين التعليمات
             while self.match_kinds(&[TokenKind::Newline]) {}
 
             if self.is_at_end() {
@@ -44,7 +41,7 @@ impl Parser {
                 }
                 Err(err) => {
                     errors.push(err);
-                    self.synchronize(); // التعافي الذاتي من الخطأ النحوي لمواصلة التحليل
+                    self.synchronize();
                 }
             }
         }
@@ -63,13 +60,10 @@ impl Parser {
             return Ok(None);
         }
 
-        if self.check(&TokenKind::Function) || self.peek().lexeme == "دالة" || self.peek().lexeme == "fn" {
-            self.advance();
+        if self.match_kinds(&[TokenKind::Function]) {
             return self.function_declaration().map(Some);
         }
-        if self.check(&TokenKind::Let) || self.check(&TokenKind::Var) || 
-           self.peek().lexeme == "متغير" || self.peek().lexeme == "دع" || self.peek().lexeme == "let" {
-            self.advance();
+        if self.match_kinds(&[TokenKind::Let, TokenKind::Var]) {
             return self.var_declaration().map(Some);
         }
         self.statement().map(Some)
@@ -83,7 +77,6 @@ impl Parser {
 
         let mut params = Vec::new();
 
-        // دعم الصيغة القديمة: دالة جمع(أ, ب)
         if self.match_kinds(&[TokenKind::LeftParen]) {
             if !self.check(&TokenKind::RightParen) {
                 loop {
@@ -106,10 +99,7 @@ impl Parser {
             )?;
 
             self.match_kinds(&[TokenKind::Colon]);
-        }
-        // دعم الصيغة الجديدة:
-        // دالة جمع أ ب
-        else {
+        } else {
             while self.check(&TokenKind::Identifier) {
                 params.push(self.advance().clone());
             }
@@ -132,8 +122,7 @@ impl Parser {
     fn var_declaration(&mut self) -> Result<Stmt, ParseError> {
         let name = self.consume(TokenKind::Identifier, "متوقع اسم المتغير بعد الإعلان عنه.")?.clone();
         let mut initializer = None;
-        if self.match_kinds(&[TokenKind::Equal]) || self.peek().lexeme == "=" {
-            if self.peek().lexeme == "=" { self.advance(); }
+        if self.match_kinds(&[TokenKind::Equal]) {
             initializer = Some(self.expression()?);
         }
         self.match_kinds(&[TokenKind::Semicolon]);
@@ -141,20 +130,16 @@ impl Parser {
     }
 
     fn statement(&mut self) -> Result<Stmt, ParseError> {
-        if self.check(&TokenKind::If) || self.peek().lexeme == "إذا" || self.peek().lexeme == "if" {
-            self.advance();
+        if self.match_kinds(&[TokenKind::If]) {
             return self.if_statement();
         }
-        if self.check(&TokenKind::While) || self.peek().lexeme == "طالما" || self.peek().lexeme == "while" {
-            self.advance();
+        if self.match_kinds(&[TokenKind::While]) {
             return self.while_statement();
         }
-        if self.check(&TokenKind::Print) || self.peek().lexeme == "اطبع" || self.peek().lexeme == "اكتب" || self.peek().lexeme == "print" {
-            self.advance();
+        if self.match_kinds(&[TokenKind::Print]) {
             return self.print_statement();
         }
-        if self.check(&TokenKind::Return) || self.peek().lexeme == "ارجع" || self.peek().lexeme == "return" {
-            self.advance();
+        if self.match_kinds(&[TokenKind::Return]) {
             return self.return_statement();
         }
         if self.match_kinds(&[TokenKind::LeftBrace]) {
@@ -176,8 +161,8 @@ impl Parser {
     fn print_statement(&mut self) -> Result<Stmt, ParseError> {
         let has_paren = self.match_kinds(&[TokenKind::LeftParen]);
         let value = self.expression()?;
-        if has_paren { 
-            self.consume(TokenKind::RightParen, "متوقع قوس مغلق ')' بعد تعبير الطباعة.")?; 
+        if has_paren {
+            self.consume(TokenKind::RightParen, "متوقع قوس مغلق ')' بعد تعبير الطباعة.")?;
         }
         self.match_kinds(&[TokenKind::Semicolon]);
         Ok(Stmt::Print(value))
@@ -197,18 +182,8 @@ impl Parser {
 
         let mut else_branch = None;
 
-        if self.check(&TokenKind::Else)
-            || self.peek().lexeme == "والا"
-            || self.peek().lexeme == "إلا"
-        {
-            self.advance();
-
-            // دعم: وإلا إذا
-            if self.check(&TokenKind::If)
-                || self.peek().lexeme == "إذا"
-                || self.peek().lexeme == "اذا"
-            {
-                self.advance();
+        if self.match_kinds(&[TokenKind::Else]) {
+            if self.match_kinds(&[TokenKind::If]) {
                 else_branch = Some(Box::new(self.if_statement()?));
             } else {
                 self.consume(
@@ -229,7 +204,7 @@ impl Parser {
         })
     }
 
-fn while_statement(&mut self) -> Result<Stmt, ParseError> {
+    fn while_statement(&mut self) -> Result<Stmt, ParseError> {
         let condition = self.expression()?;
 
         self.consume(
@@ -237,8 +212,7 @@ fn while_statement(&mut self) -> Result<Stmt, ParseError> {
             "متوقع سطر جديد بعد شرط طالما."
         )?;
 
-        let body =
-            Box::new(Stmt::Block(self.block_statement()?));
+        let body = Box::new(Stmt::Block(self.block_statement()?));
 
         Ok(Stmt::While {
             condition,
@@ -280,14 +254,13 @@ fn while_statement(&mut self) -> Result<Stmt, ParseError> {
         Ok(Stmt::Expression(expr))
     }
 
-    fn expression(&mut self) -> Result<Expr, ParseError> { 
-        self.assignment() 
+    fn expression(&mut self) -> Result<Expr, ParseError> {
+        self.assignment()
     }
 
     fn assignment(&mut self) -> Result<Expr, ParseError> {
         let expr = self.or()?;
-        if self.match_kinds(&[TokenKind::Equal]) || self.peek().lexeme == "=" {
-            if self.peek().lexeme == "=" { self.advance(); }
+        if self.match_kinds(&[TokenKind::Equal]) {
             let value = self.assignment()?;
             match expr {
                 Expr::Variable(name) => {
@@ -316,8 +289,7 @@ fn while_statement(&mut self) -> Result<Stmt, ParseError> {
 
     fn or(&mut self) -> Result<Expr, ParseError> {
         let mut expr = self.and()?;
-        while self.match_kinds(&[TokenKind::OrOr]) || self.peek().lexeme == "أو" {
-            if self.peek().lexeme == "أو" { self.advance(); }
+        while self.match_kinds(&[TokenKind::OrOr]) {
             let operator = self.previous().clone();
             let right = self.and()?;
             expr = Expr::Binary { left: Box::new(expr), operator, right: Box::new(right) };
@@ -327,8 +299,7 @@ fn while_statement(&mut self) -> Result<Stmt, ParseError> {
 
     fn and(&mut self) -> Result<Expr, ParseError> {
         let mut expr = self.equality()?;
-        while self.match_kinds(&[TokenKind::AndAnd]) || self.peek().lexeme == "و" {
-            if self.peek().lexeme == "و" { self.advance(); }
+        while self.match_kinds(&[TokenKind::AndAnd]) {
             let operator = self.previous().clone();
             let right = self.equality()?;
             expr = Expr::Binary { left: Box::new(expr), operator, right: Box::new(right) };
@@ -338,9 +309,7 @@ fn while_statement(&mut self) -> Result<Stmt, ParseError> {
 
     fn equality(&mut self) -> Result<Expr, ParseError> {
         let mut expr = self.comparison()?;
-        while self.match_kinds(&[TokenKind::BangEqual, TokenKind::EqualEqual]) ||
-              self.peek().lexeme == "==" || self.peek().lexeme == "!=" {
-            if self.peek().lexeme == "==" || self.peek().lexeme == "!=" { self.advance(); }
+        while self.match_kinds(&[TokenKind::BangEqual, TokenKind::EqualEqual]) {
             let operator = self.previous().clone();
             let right = self.comparison()?;
             expr = Expr::Binary { left: Box::new(expr), operator, right: Box::new(right) };
@@ -352,8 +321,6 @@ fn while_statement(&mut self) -> Result<Stmt, ParseError> {
         let mut expr = self.term()?;
 
         loop {
-            let mut operator = None;
-
             if self.match_kinds(&[
                 TokenKind::Greater,
                 TokenKind::GreaterEqual,
@@ -361,62 +328,6 @@ fn while_statement(&mut self) -> Result<Stmt, ParseError> {
                 TokenKind::LessEqual,
             ]) {
                 let op = self.previous().clone();
-
-                // دعم الصيغة الطبيعية: أكبر من / أصغر من
-                if self.peek().lexeme == "من" {
-                    self.advance();
-                }
-
-                operator = Some(op);
-            }
-            else if self.peek().kind == TokenKind::Greater
-                || self.peek().lexeme == "أكبر"
-            {
-                let mut op = self.advance().clone();
-
-                if self.peek().lexeme == "من" {
-                    self.advance();
-                }
-
-                op.kind = TokenKind::Greater;
-                op.lexeme = ">".to_string();
-                operator = Some(op);
-            }
-            else if self.peek().kind == TokenKind::Less
-                || self.peek().lexeme == "أصغر"
-                || self.peek().lexeme == "اصغر"
-            {
-                let mut op = self.advance().clone();
-
-                if self.peek().lexeme == "من" {
-                    self.advance();
-                }
-
-                op.kind = TokenKind::Less;
-                op.lexeme = "<".to_string();
-                operator = Some(op);
-            }
-            else if self.peek().lexeme == "يساوي"
-            {
-                let mut op = self.advance().clone();
-                op.kind = TokenKind::EqualEqual;
-                op.lexeme = "==".to_string();
-                operator = Some(op);
-            }
-            else if self.peek().lexeme == "لا"
-            {
-                let mut op = self.advance().clone();
-
-                if self.peek().lexeme == "يساوي" {
-                    self.advance();
-                }
-
-                op.kind = TokenKind::BangEqual;
-                op.lexeme = "!=".to_string();
-                operator = Some(op);
-            }
-
-            if let Some(op) = operator {
                 let right = self.term()?;
 
                 expr = Expr::Binary {
@@ -434,9 +345,7 @@ fn while_statement(&mut self) -> Result<Stmt, ParseError> {
 
     fn term(&mut self) -> Result<Expr, ParseError> {
         let mut expr = self.factor()?;
-        while self.match_kinds(&[TokenKind::Minus, TokenKind::Plus]) || self.peek().lexeme == "+" || self.peek().lexeme == "-" {
-            let lex = self.peek().lexeme.clone();
-            if lex == "+" || lex == "-" { self.advance(); }
+        while self.match_kinds(&[TokenKind::Minus, TokenKind::Plus]) {
             let operator = self.previous().clone();
             let right = self.factor()?;
             expr = Expr::Binary { left: Box::new(expr), operator, right: Box::new(right) };
@@ -446,9 +355,7 @@ fn while_statement(&mut self) -> Result<Stmt, ParseError> {
 
     fn factor(&mut self) -> Result<Expr, ParseError> {
         let mut expr = self.unary()?;
-        while self.match_kinds(&[TokenKind::Slash, TokenKind::Star]) || self.peek().lexeme == "*" || self.peek().lexeme == "/" {
-            let lex = self.peek().lexeme.clone();
-            if lex == "*" || lex == "/" { self.advance(); }
+        while self.match_kinds(&[TokenKind::Slash, TokenKind::Star]) {
             let operator = self.previous().clone();
             let right = self.unary()?;
             expr = Expr::Binary { left: Box::new(expr), operator, right: Box::new(right) };
@@ -457,9 +364,7 @@ fn while_statement(&mut self) -> Result<Stmt, ParseError> {
     }
 
     fn unary(&mut self) -> Result<Expr, ParseError> {
-        if self.match_kinds(&[TokenKind::Bang, TokenKind::Minus]) || self.peek().lexeme == "!" || self.peek().lexeme == "-" {
-            let lex = self.peek().lexeme.clone();
-            if lex == "!" || lex == "-" { self.advance(); }
+        if self.match_kinds(&[TokenKind::Bang, TokenKind::Minus]) {
             let operator = self.previous().clone();
             let right = self.unary()?;
             return Ok(Expr::Unary { operator, right: Box::new(right) });
@@ -473,7 +378,7 @@ fn while_statement(&mut self) -> Result<Stmt, ParseError> {
         loop {
             if self.match_kinds(&[TokenKind::LeftParen]) {
                 expr = self.finish_call(expr)?;
-            } 
+            }
             else if self.match_kinds(&[TokenKind::LeftBracket]) {
                 expr = self.finish_index(expr)?;
             }
@@ -482,8 +387,6 @@ fn while_statement(&mut self) -> Result<Stmt, ParseError> {
             }
         }
 
-        // دعم الاستدعاء المبسط:
-        // جمع 10 20
         if let Expr::Variable(_) = expr {
             let mut arguments = Vec::new();
 
@@ -532,25 +435,23 @@ fn while_statement(&mut self) -> Result<Stmt, ParseError> {
     }
 
     fn primary(&mut self) -> Result<Expr, ParseError> {
-        if self.match_kinds(&[TokenKind::False]) || self.peek().lexeme == "خطأ" {
-            if self.peek().lexeme == "خطأ" { self.advance(); }
+        if self.match_kinds(&[TokenKind::False]) {
             return Ok(Expr::Literal("false".to_string()));
         }
-        if self.match_kinds(&[TokenKind::True]) || self.peek().lexeme == "صواب" {
-            if self.peek().lexeme == "صواب" { self.advance(); }
+        if self.match_kinds(&[TokenKind::True]) {
             return Ok(Expr::Literal("true".to_string()));
         }
         if self.peek().lexeme == "عدم" {
             self.advance();
             return Ok(Expr::Literal("nil".to_string()));
         }
-        if self.match_kinds(&[TokenKind::Number]) || self.peek().kind == TokenKind::Number {
+        if self.match_kinds(&[TokenKind::Number]) {
             return Ok(Expr::Literal(self.previous().lexeme.clone()));
         }
-        if self.match_kinds(&[TokenKind::String]) || self.peek().kind == TokenKind::String {
+        if self.match_kinds(&[TokenKind::String]) {
             return Ok(Expr::Literal(self.previous().lexeme.clone()));
         }
-        if self.match_kinds(&[TokenKind::Identifier]) || self.peek().kind == TokenKind::Identifier {
+        if self.match_kinds(&[TokenKind::Identifier]) {
             return Ok(Expr::Variable(self.previous().clone()));
         }
         if self.match_kinds(&[TokenKind::LeftParen]) {
@@ -571,7 +472,6 @@ fn while_statement(&mut self) -> Result<Stmt, ParseError> {
             return Ok(Expr::Array { bracket, elements });
         }
 
-        // في حال حدوث رمز غير متوقع بدلاً من الـ panic نلقي بخطأ منظم
         Err(ParseError {
             token: self.peek().clone(),
             message: "تعبير غير متوقع أو رمز غير معروف.".to_string(),
@@ -618,7 +518,6 @@ fn while_statement(&mut self) -> Result<Stmt, ParseError> {
         })
     }
 
-    // تقنية الـ Synchronization لإعادة توجيه الـ Parser بعد الخطأ
     fn synchronize(&mut self) {
         self.advance();
 
@@ -629,11 +528,6 @@ fn while_statement(&mut self) -> Result<Stmt, ParseError> {
                 TokenKind::Function | TokenKind::Var | TokenKind::Let |
                 TokenKind::If | TokenKind::While | TokenKind::Print | TokenKind::Return => return,
                 _ => {}
-            }
-
-            let lex = &self.peek().lexeme;
-            if lex == "دالة" || lex == "متغير" || lex == "إذا" || lex == "طالما" || lex == "اطبع" || lex == "اكتب" || lex == "ارجع" {
-                return;
             }
 
             self.advance();
