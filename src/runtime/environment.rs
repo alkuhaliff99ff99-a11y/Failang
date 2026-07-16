@@ -1,4 +1,4 @@
-use crate::runtime::value::Value;
+use crate::compiler::interpreter::value::Value;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc; // تأكد من مطابقة مسار الـ Value لديك
@@ -9,12 +9,6 @@ pub struct Environment {
     values: HashMap<String, Value>,
     // مؤشر آمن للـ Scope الأب (العلوي)
     pub enclosing: Option<Rc<RefCell<Environment>>>,
-}
-
-impl Default for Environment {
-    fn default() -> Self {
-        Self::new()
-    }
 }
 
 impl Environment {
@@ -65,5 +59,11 @@ impl Environment {
         }
 
         Err(format!("المتغير '{}' غير معرف برمجياً.", name))
+    }
+}
+
+impl Default for Environment {
+    fn default() -> Self {
+        Self::new()
     }
 }

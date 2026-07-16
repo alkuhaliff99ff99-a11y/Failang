@@ -31,6 +31,12 @@ pub fn execute(args: &[String]) {
             crate::cli::help::show();
         }
 
+        "--version" | "-v" => {
+            println!("Failang v0.2.1");
+            println!("Fast • Safe • Logical");
+            println!("Arabic / English Programming Language");
+        }
+
         "new" => {
             let name = if args.len() >= 3 {
                 &args[2]
