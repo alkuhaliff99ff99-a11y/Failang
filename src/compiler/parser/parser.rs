@@ -180,6 +180,7 @@ impl Parser {
             Stmt::Block(self.block_statement()?)
         );
 
+        self.skip_newlines();
         let mut else_branch = None;
 
         if self.match_kinds(&[TokenKind::Else]) {
@@ -212,6 +213,7 @@ impl Parser {
             "متوقع سطر جديد بعد شرط طالما."
         )?;
 
+        self.skip_newlines();
         let body = Box::new(Stmt::Block(self.block_statement()?));
 
         Ok(Stmt::While {
@@ -522,7 +524,7 @@ impl Parser {
         self.advance();
 
         while !self.is_at_end() {
-            if self.previous().kind == TokenKind::Semicolon { return; }
+            if self.previous().kind == TokenKind::Semicolon || self.previous().kind == TokenKind::Newline { return; }
 
             match self.peek().kind {
                 TokenKind::Function | TokenKind::Var | TokenKind::Let |
