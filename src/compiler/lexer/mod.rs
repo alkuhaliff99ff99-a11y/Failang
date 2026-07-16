@@ -12,7 +12,7 @@ pub enum TokenKind {
 
     Identifier, String, Number,
     Let, Const, Var, If, Else, While, Print, True, False, Function, Return,
-    EOF,
+    Eof,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -136,14 +136,14 @@ impl Lexer {
             }
         }
 
-        // عند نهاية الملف (EOF)، نقوم بإغلاق أي كتل مفتوحة (Dedent) وتوليد التوكنز المقابلة لها
+        // عند نهاية الملف (Eof)، نقوم بإغلاق أي كتل مفتوحة (Dedent) وتوليد التوكنز المقابلة لها
         while self.indent_stack.len() > 1 {
             self.indent_stack.pop();
             self.add_token(TokenKind::Dedent);
         }
 
         self.tokens.push(Token {
-            kind: TokenKind::EOF,
+            kind: TokenKind::Eof,
             lexeme: "".to_string(),
             line: self.line,
         });
