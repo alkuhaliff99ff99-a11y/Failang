@@ -2,16 +2,52 @@ use std::collections::HashMap;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum TokenKind {
-    LeftParen, RightParen, LeftBrace, RightBrace, LeftBracket, RightBracket,
-    Comma, Dot, Minus, Plus, Semicolon, Slash, Star, Percent,
-    Bang, BangEqual, Equal, EqualEqual, Greater, GreaterEqual, Less, LessEqual,
-    AndAnd, OrOr, Arrow, Colon,
-    
-    // التوكنز الجديدة للتنسيق الحر والمسافات البادئة
-    Newline, Indent, Dedent,
+    LeftParen,
+    RightParen,
+    LeftBrace,
+    RightBrace,
+    LeftBracket,
+    RightBracket,
+    Comma,
+    Dot,
+    Minus,
+    Plus,
+    Semicolon,
+    Slash,
+    Star,
+    Percent,
+    Bang,
+    BangEqual,
+    Equal,
+    EqualEqual,
+    Greater,
+    GreaterEqual,
+    Less,
+    LessEqual,
+    AndAnd,
+    OrOr,
+    Arrow,
+    Colon,
 
-    Identifier, String, Number,
-    Let, Const, Var, If, Else, While, Print, True, False, Function, Return,
+    // التوكنز الجديدة للتنسيق الحر والمسافات البادئة
+    Newline,
+    Indent,
+    Dedent,
+
+    Identifier,
+    String,
+    Number,
+    Let,
+    Const,
+    Var,
+    If,
+    Else,
+    While,
+    Print,
+    True,
+    False,
+    Function,
+    Return,
     Eof,
 }
 
@@ -29,7 +65,7 @@ pub struct Lexer {
     current: usize,
     line: usize,
     keywords: HashMap<String, TokenKind>,
-    
+
     // متغيرات تتبع المسافات البادئة والأسطر الجديدة
     indent_stack: Vec<usize>,
     at_line_start: bool,
@@ -95,7 +131,7 @@ impl Lexer {
     pub fn scan_tokens(mut self) -> Result<Vec<Token>, String> {
         while !self.is_at_end() {
             self.start = self.current;
-            
+
             // 1. فحص وحساب المسافات البادئة إذا كنا في بداية سطر جديد
             if self.at_line_start {
                 let mut spaces = 0;
@@ -109,9 +145,14 @@ impl Lexer {
                 }
 
                 // إذا وجدنا سطر فارغ تماماً أو تعليق، لا نغير مستويات الـ Indent
-                if self.is_at_end() || self.peek() == '\n' || (self.peek() == '/' && self.peek_next() == '/') {
+                if self.is_at_end()
+                    || self.peek() == '\n'
+                    || (self.peek() == '/' && self.peek_next() == '/')
+                {
                     self.at_line_start = true;
-                    if !self.is_at_end() { self.advance(); } // لتجاوز السطر الجديد الفارغ
+                    if !self.is_at_end() {
+                        self.advance();
+                    } // لتجاوز السطر الجديد الفارغ
                     continue;
                 }
 
@@ -165,49 +206,76 @@ impl Lexer {
             ';' => self.add_token(TokenKind::Semicolon),
             ':' | '：' => self.add_token(TokenKind::Colon),
             '+' => {
-                let kind = if self.match_char('+') { TokenKind::Plus }
-                           else if self.match_char('=') { TokenKind::Equal }
-                           else { TokenKind::Plus };
+                let kind = if self.match_char('+') {
+                    TokenKind::Plus
+                } else if self.match_char('=') {
+                    TokenKind::Equal
+                } else {
+                    TokenKind::Plus
+                };
                 self.add_token(kind);
             }
             '-' => {
-                let kind = if self.match_char('>') { TokenKind::Arrow }
-                           else { TokenKind::Minus };
+                let kind = if self.match_char('>') {
+                    TokenKind::Arrow
+                } else {
+                    TokenKind::Minus
+                };
                 self.add_token(kind);
             }
             '*' => self.add_token(TokenKind::Star),
             '%' => self.add_token(TokenKind::Percent),
             '=' => {
-                let kind = if self.match_char('=') { TokenKind::EqualEqual }
-                           else { TokenKind::Equal };
+                let kind = if self.match_char('=') {
+                    TokenKind::EqualEqual
+                } else {
+                    TokenKind::Equal
+                };
                 self.add_token(kind);
             }
             '!' => {
-                let kind = if self.match_char('=') { TokenKind::BangEqual }
-                           else { TokenKind::Bang };
+                let kind = if self.match_char('=') {
+                    TokenKind::BangEqual
+                } else {
+                    TokenKind::Bang
+                };
                 self.add_token(kind);
             }
             '<' => {
-                let kind = if self.match_char('=') { TokenKind::LessEqual }
-                           else { TokenKind::Less };
+                let kind = if self.match_char('=') {
+                    TokenKind::LessEqual
+                } else {
+                    TokenKind::Less
+                };
                 self.add_token(kind);
             }
             '>' => {
-                let kind = if self.match_char('=') { TokenKind::GreaterEqual }
-                           else { TokenKind::Greater };
+                let kind = if self.match_char('=') {
+                    TokenKind::GreaterEqual
+                } else {
+                    TokenKind::Greater
+                };
                 self.add_token(kind);
             }
             '&' => {
-                if self.match_char('&') { self.add_token(TokenKind::AndAnd); }
-                else { return Err(format!("Error: single & at line {}", self.line)); }
+                if self.match_char('&') {
+                    self.add_token(TokenKind::AndAnd);
+                } else {
+                    return Err(format!("Error: single & at line {}", self.line));
+                }
             }
             '|' => {
-                if self.match_char('|') { self.add_token(TokenKind::OrOr); }
-                else { return Err(format!("Error: single | at line {}", self.line)); }
+                if self.match_char('|') {
+                    self.add_token(TokenKind::OrOr);
+                } else {
+                    return Err(format!("Error: single | at line {}", self.line));
+                }
             }
             '/' => {
                 if self.match_char('/') {
-                    while self.peek() != '\n' && !self.is_at_end() { self.advance(); }
+                    while self.peek() != '\n' && !self.is_at_end() {
+                        self.advance();
+                    }
                 } else {
                     self.add_token(TokenKind::Slash);
                 }
@@ -238,7 +306,9 @@ impl Lexer {
 
     fn string_token(&mut self) -> Result<(), String> {
         while self.peek() != '"' && !self.is_at_end() {
-            if self.peek() == '\n' { self.line += 1; }
+            if self.peek() == '\n' {
+                self.line += 1;
+            }
             self.advance();
         }
 
@@ -248,17 +318,23 @@ impl Lexer {
 
         self.advance(); // لتجاوز الرمز " المغلق
 
-        let value: String = self.source[self.start + 1..self.current - 1].iter().collect();
+        let value: String = self.source[self.start + 1..self.current - 1]
+            .iter()
+            .collect();
         self.add_token_with_lexeme(TokenKind::String, value);
         Ok(())
     }
 
     fn number_token(&mut self) {
-        while self.is_digit(self.peek()) { self.advance(); }
+        while self.is_digit(self.peek()) {
+            self.advance();
+        }
 
         if self.peek() == '.' && self.is_digit(self.peek_next()) {
             self.advance();
-            while self.is_digit(self.peek()) { self.advance(); }
+            while self.is_digit(self.peek()) {
+                self.advance();
+            }
         }
 
         let value: String = self.source[self.start..self.current].iter().collect();
@@ -266,12 +342,19 @@ impl Lexer {
     }
 
     fn identifier_token(&mut self) {
-        while self.peek().is_alphanumeric() || self.peek() == '_' || (self.peek() >= 'ا' && self.peek() <= 'ي') {
+        while self.peek().is_alphanumeric()
+            || self.peek() == '_'
+            || (self.peek() >= 'ا' && self.peek() <= 'ي')
+        {
             self.advance();
         }
 
         let text: String = self.source[self.start..self.current].iter().collect();
-        let kind = self.keywords.get(&text).cloned().unwrap_or(TokenKind::Identifier);
+        let kind = self
+            .keywords
+            .get(&text)
+            .cloned()
+            .unwrap_or(TokenKind::Identifier);
         self.add_token(kind);
     }
 
@@ -286,18 +369,26 @@ impl Lexer {
     }
 
     fn peek(&self) -> char {
-        if self.is_at_end() { return '\0'; }
+        if self.is_at_end() {
+            return '\0';
+        }
         self.source[self.current]
     }
 
     fn peek_next(&self) -> char {
-        if self.current + 1 >= self.source.len() { return '\0'; }
+        if self.current + 1 >= self.source.len() {
+            return '\0';
+        }
         self.source[self.current + 1]
     }
 
     fn match_char(&mut self, expected: char) -> bool {
-        if self.is_at_end() { return false; }
-        if self.source[self.current] != expected { return false; }
+        if self.is_at_end() {
+            return false;
+        }
+        if self.source[self.current] != expected {
+            return false;
+        }
         self.current += 1;
         true
     }

@@ -17,8 +17,7 @@ impl DiagnosticError {
     pub fn display(&self) -> String {
         format!(
             "❌ خطأ أثناء التشغيل | Runtime Error:\n  عربي:  {}\n  En:    {}",
-            self.arabic,
-            self.english
+            self.arabic, self.english
         )
     }
 
@@ -41,12 +40,8 @@ impl DiagnosticError {
 
 pub fn translate(message: &str) -> DiagnosticError {
     let english = match message {
-        m if m.contains("لا يمكن القسمة على صفر") => {
-            "Error: Division by zero"
-        }
-        m if m.contains("متغير غير معرف") => {
-            "Error: Undefined variable"
-        }
+        m if m.contains("لا يمكن القسمة على صفر") => "Error: Division by zero",
+        m if m.contains("متغير غير معرف") => "Error: Undefined variable",
         m if m.contains("تجاوز حدود المصفوفة") => {
             "Error: Array index out of bounds"
         }
@@ -56,10 +51,8 @@ pub fn translate(message: &str) -> DiagnosticError {
         m if m.contains("خطأ في تمرير المعاملات") => {
             "Error: Function argument mismatch"
         }
-        _ => {
-            "Error: Runtime failure"
-        }
+        _ => "Error: Runtime failure",
     };
-    
+
     DiagnosticError::new(message, english)
 }

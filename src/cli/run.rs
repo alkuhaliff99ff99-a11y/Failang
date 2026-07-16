@@ -1,6 +1,6 @@
+use crate::compiler::interpreter::Interpreter;
 use std::fs;
 use std::process;
-use crate::compiler::interpreter::Interpreter;
 
 pub fn run_file(path: &str) {
     if !path.ends_with(".fsl") {

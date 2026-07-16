@@ -1,6 +1,6 @@
+use fsl::compiler::interpreter::Interpreter;
 use fsl::compiler::lexer::Lexer;
 use fsl::compiler::parser::Parser;
-use fsl::compiler::interpreter::Interpreter;
 
 #[test]
 fn test_english_variable_and_math() {
@@ -9,7 +9,7 @@ fn test_english_variable_and_math() {
     let tokens = lexer.scan_tokens().expect("Lexer error in English");
     let mut parser = Parser::new(tokens);
     let statements = parser.parse().expect("Parser error in English");
-    
+
     let mut interpreter = Interpreter::new();
     assert!(interpreter.interpret(&statements).is_ok());
 }
@@ -22,7 +22,7 @@ fn test_arabic_variable_and_math() {
     let tokens = lexer.scan_tokens().expect("Lexer error in Arabic");
     let mut parser = Parser::new(tokens);
     let statements = parser.parse().expect("Parser error in Arabic");
-    
+
     let mut interpreter = Interpreter::new();
     assert!(interpreter.interpret(&statements).is_ok());
 }

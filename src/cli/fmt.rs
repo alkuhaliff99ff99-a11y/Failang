@@ -4,7 +4,7 @@ use std::process;
 
 pub fn format() {
     let args: Vec<String> = env::args().collect();
-    
+
     // سيتوقع الأمر تمرير مسار الملف مثل: fsl fmt filename.fsl
     // في بيئة التشغيل عبر cargo run، تكون المعاملات كالتالي:
     // args[0] = target/debug/fsl

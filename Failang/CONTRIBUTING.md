@@ -1,3 +1,0 @@
-# Contributing
-
-Failang Documentation.

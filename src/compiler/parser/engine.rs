@@ -1,4 +1,4 @@
-use super::ast::{Expr, Stmt};
+use crate::compiler::ast::{Expr, Stmt};
 use crate::compiler::lexer::{Token, TokenKind};
 
 #[derive(Debug, Clone)]
@@ -13,7 +13,6 @@ pub struct Parser {
 }
 
 impl Parser {
-
     fn skip_newlines(&mut self) {
         while self.match_kinds(&[TokenKind::Newline]) {}
     }
@@ -70,20 +69,18 @@ impl Parser {
     }
 
     fn function_declaration(&mut self) -> Result<Stmt, ParseError> {
-        let name = self.consume(
-            TokenKind::Identifier,
-            "متوقع اسم الدالة بعد الإعلان."
-        )?.clone();
+        let name = self
+            .consume(TokenKind::Identifier, "متوقع اسم الدالة بعد الإعلان.")?
+            .clone();
 
         let mut params = Vec::new();
 
         if self.match_kinds(&[TokenKind::LeftParen]) {
             if !self.check(&TokenKind::RightParen) {
                 loop {
-                    let param = self.consume(
-                        TokenKind::Identifier,
-                        "متوقع اسم المعامل."
-                    )?.clone();
+                    let param = self
+                        .consume(TokenKind::Identifier, "متوقع اسم المعامل.")?
+                        .clone();
 
                     params.push(param);
 
@@ -93,10 +90,7 @@ impl Parser {
                 }
             }
 
-            self.consume(
-                TokenKind::RightParen,
-                "متوقع قوس إغلاق."
-            )?;
+            self.consume(TokenKind::RightParen, "متوقع قوس إغلاق.")?;
 
             self.match_kinds(&[TokenKind::Colon]);
         } else {
@@ -105,22 +99,17 @@ impl Parser {
             }
         }
 
-        self.consume(
-            TokenKind::Newline,
-            "متوقع سطر جديد بعد تعريف الدالة."
-        )?;
+        self.consume(TokenKind::Newline, "متوقع سطر جديد بعد تعريف الدالة.")?;
 
         let body = self.block_statement()?;
 
-        Ok(Stmt::Function {
-            name,
-            params,
-            body,
-        })
+        Ok(Stmt::Function { name, params, body })
     }
 
     fn var_declaration(&mut self) -> Result<Stmt, ParseError> {
-        let name = self.consume(TokenKind::Identifier, "متوقع اسم المتغير بعد الإعلان عنه.")?.clone();
+        let name = self
+            .consume(TokenKind::Identifier, "متوقع اسم المتغير بعد الإعلان عنه.")?
+            .clone();
         let mut initializer = None;
         if self.match_kinds(&[TokenKind::Equal]) {
             initializer = Some(self.expression()?);
@@ -151,7 +140,10 @@ impl Parser {
     fn return_statement(&mut self) -> Result<Stmt, ParseError> {
         let keyword = self.previous().clone();
         let mut value = None;
-        if !self.check(&TokenKind::Semicolon) && !self.check(&TokenKind::RightBrace) && !self.is_at_end() {
+        if !self.check(&TokenKind::Semicolon)
+            && !self.check(&TokenKind::RightBrace)
+            && !self.is_at_end()
+        {
             value = Some(self.expression()?);
         }
         self.match_kinds(&[TokenKind::Semicolon]);
@@ -162,7 +154,10 @@ impl Parser {
         let has_paren = self.match_kinds(&[TokenKind::LeftParen]);
         let value = self.expression()?;
         if has_paren {
-            self.consume(TokenKind::RightParen, "متوقع قوس مغلق ')' بعد تعبير الطباعة.")?;
+            self.consume(
+                TokenKind::RightParen,
+                "متوقع قوس مغلق ')' بعد تعبير الطباعة.",
+            )?;
         }
         self.match_kinds(&[TokenKind::Semicolon]);
         Ok(Stmt::Print(value))
@@ -171,14 +166,9 @@ impl Parser {
     fn if_statement(&mut self) -> Result<Stmt, ParseError> {
         let condition = self.expression()?;
 
-        self.consume(
-            TokenKind::Newline,
-            "متوقع سطر جديد بعد شرط إذا."
-        )?;
+        self.consume(TokenKind::Newline, "متوقع سطر جديد بعد شرط إذا.")?;
 
-        let then_branch = Box::new(
-            Stmt::Block(self.block_statement()?)
-        );
+        let then_branch = Box::new(Stmt::Block(self.block_statement()?));
 
         self.skip_newlines();
         let mut else_branch = None;
@@ -187,14 +177,9 @@ impl Parser {
             if self.match_kinds(&[TokenKind::If]) {
                 else_branch = Some(Box::new(self.if_statement()?));
             } else {
-                self.consume(
-                    TokenKind::Newline,
-                    "متوقع سطر جديد بعد وإلا."
-                )?;
+                self.consume(TokenKind::Newline, "متوقع سطر جديد بعد وإلا.")?;
 
-                else_branch = Some(Box::new(
-                    Stmt::Block(self.block_statement()?)
-                ));
+                else_branch = Some(Box::new(Stmt::Block(self.block_statement()?)));
             }
         }
 
@@ -208,18 +193,12 @@ impl Parser {
     fn while_statement(&mut self) -> Result<Stmt, ParseError> {
         let condition = self.expression()?;
 
-        self.consume(
-            TokenKind::Newline,
-            "متوقع سطر جديد بعد شرط طالما."
-        )?;
+        self.consume(TokenKind::Newline, "متوقع سطر جديد بعد شرط طالما.")?;
 
         self.skip_newlines();
         let body = Box::new(Stmt::Block(self.block_statement()?));
 
-        Ok(Stmt::While {
-            condition,
-            body,
-        })
+        Ok(Stmt::While { condition, body })
     }
 
     fn block_statement(&mut self) -> Result<Vec<Stmt>, ParseError> {
@@ -229,7 +208,7 @@ impl Parser {
 
         self.consume(
             TokenKind::Indent,
-            "متوقع بداية كتلة برمجية بعد المسافة البادئة."
+            "متوقع بداية كتلة برمجية بعد المسافة البادئة.",
         )?;
 
         self.skip_newlines();
@@ -242,10 +221,7 @@ impl Parser {
             self.skip_newlines();
         }
 
-        self.consume(
-            TokenKind::Dedent,
-            "متوقع نهاية الكتلة البرمجية."
-        )?;
+        self.consume(TokenKind::Dedent, "متوقع نهاية الكتلة البرمجية.")?;
 
         Ok(statements)
     }
@@ -294,7 +270,11 @@ impl Parser {
         while self.match_kinds(&[TokenKind::OrOr]) {
             let operator = self.previous().clone();
             let right = self.and()?;
-            expr = Expr::Binary { left: Box::new(expr), operator, right: Box::new(right) };
+            expr = Expr::Binary {
+                left: Box::new(expr),
+                operator,
+                right: Box::new(right),
+            };
         }
         Ok(expr)
     }
@@ -304,7 +284,11 @@ impl Parser {
         while self.match_kinds(&[TokenKind::AndAnd]) {
             let operator = self.previous().clone();
             let right = self.equality()?;
-            expr = Expr::Binary { left: Box::new(expr), operator, right: Box::new(right) };
+            expr = Expr::Binary {
+                left: Box::new(expr),
+                operator,
+                right: Box::new(right),
+            };
         }
         Ok(expr)
     }
@@ -314,7 +298,11 @@ impl Parser {
         while self.match_kinds(&[TokenKind::BangEqual, TokenKind::EqualEqual]) {
             let operator = self.previous().clone();
             let right = self.comparison()?;
-            expr = Expr::Binary { left: Box::new(expr), operator, right: Box::new(right) };
+            expr = Expr::Binary {
+                left: Box::new(expr),
+                operator,
+                right: Box::new(right),
+            };
         }
         Ok(expr)
     }
@@ -350,7 +338,11 @@ impl Parser {
         while self.match_kinds(&[TokenKind::Minus, TokenKind::Plus]) {
             let operator = self.previous().clone();
             let right = self.factor()?;
-            expr = Expr::Binary { left: Box::new(expr), operator, right: Box::new(right) };
+            expr = Expr::Binary {
+                left: Box::new(expr),
+                operator,
+                right: Box::new(right),
+            };
         }
         Ok(expr)
     }
@@ -360,7 +352,11 @@ impl Parser {
         while self.match_kinds(&[TokenKind::Slash, TokenKind::Star]) {
             let operator = self.previous().clone();
             let right = self.unary()?;
-            expr = Expr::Binary { left: Box::new(expr), operator, right: Box::new(right) };
+            expr = Expr::Binary {
+                left: Box::new(expr),
+                operator,
+                right: Box::new(right),
+            };
         }
         Ok(expr)
     }
@@ -369,7 +365,10 @@ impl Parser {
         if self.match_kinds(&[TokenKind::Bang, TokenKind::Minus]) {
             let operator = self.previous().clone();
             let right = self.unary()?;
-            return Ok(Expr::Unary { operator, right: Box::new(right) });
+            return Ok(Expr::Unary {
+                operator,
+                right: Box::new(right),
+            });
         }
         self.call()
     }
@@ -380,11 +379,9 @@ impl Parser {
         loop {
             if self.match_kinds(&[TokenKind::LeftParen]) {
                 expr = self.finish_call(expr)?;
-            }
-            else if self.match_kinds(&[TokenKind::LeftBracket]) {
+            } else if self.match_kinds(&[TokenKind::LeftBracket]) {
                 expr = self.finish_index(expr)?;
-            }
-            else {
+            } else {
                 break;
             }
         }
@@ -416,7 +413,10 @@ impl Parser {
     fn finish_index(&mut self, callee: Expr) -> Result<Expr, ParseError> {
         let bracket = self.previous().clone();
         let index = self.expression()?;
-        self.consume(TokenKind::RightBracket, "متوقع قوس الإغلاق ']' بعد مؤشر/فهرس المصفوفة.")?;
+        self.consume(
+            TokenKind::RightBracket,
+            "متوقع قوس الإغلاق ']' بعد مؤشر/فهرس المصفوفة.",
+        )?;
         Ok(Expr::Index {
             callee: Box::new(callee),
             bracket,
@@ -429,11 +429,22 @@ impl Parser {
         if !self.check(&TokenKind::RightParen) {
             loop {
                 arguments.push(self.expression()?);
-                if !self.match_kinds(&[TokenKind::Comma]) { break; }
+                if !self.match_kinds(&[TokenKind::Comma]) {
+                    break;
+                }
             }
         }
-        let paren = self.consume(TokenKind::RightParen, "متوقع قوس الإغلاق ')' بعد المعاملات البرمجية الدخيلة.")?.clone();
-        Ok(Expr::Call { callee: Box::new(callee), paren, arguments })
+        let paren = self
+            .consume(
+                TokenKind::RightParen,
+                "متوقع قوس الإغلاق ')' بعد المعاملات البرمجية الدخيلة.",
+            )?
+            .clone();
+        Ok(Expr::Call {
+            callee: Box::new(callee),
+            paren,
+            arguments,
+        })
     }
 
     fn primary(&mut self) -> Result<Expr, ParseError> {
@@ -458,7 +469,10 @@ impl Parser {
         }
         if self.match_kinds(&[TokenKind::LeftParen]) {
             let expr = self.expression()?;
-            self.consume(TokenKind::RightParen, "متوقع قوس الإغلاق ')' بعد نهاية التعبير الحسابي.")?;
+            self.consume(
+                TokenKind::RightParen,
+                "متوقع قوس الإغلاق ')' بعد نهاية التعبير الحسابي.",
+            )?;
             return Ok(Expr::Grouping(Box::new(expr)));
         }
         if self.match_kinds(&[TokenKind::LeftBracket]) {
@@ -467,10 +481,15 @@ impl Parser {
             if !self.check(&TokenKind::RightBracket) {
                 loop {
                     elements.push(self.expression()?);
-                    if !self.match_kinds(&[TokenKind::Comma]) { break; }
+                    if !self.match_kinds(&[TokenKind::Comma]) {
+                        break;
+                    }
                 }
             }
-            self.consume(TokenKind::RightBracket, "متوقع قوس الإغلاق ']' بعد عناصر المصفوفة.")?;
+            self.consume(
+                TokenKind::RightBracket,
+                "متوقع قوس الإغلاق ']' بعد عناصر المصفوفة.",
+            )?;
             return Ok(Expr::Array { bracket, elements });
         }
 
@@ -491,12 +510,16 @@ impl Parser {
     }
 
     fn check(&self, kind: &TokenKind) -> bool {
-        if self.is_at_end() { return false; }
+        if self.is_at_end() {
+            return false;
+        }
         &self.peek().kind == kind
     }
 
     fn advance(&mut self) -> &Token {
-        if !self.is_at_end() { self.current += 1; }
+        if !self.is_at_end() {
+            self.current += 1;
+        }
         self.previous()
     }
 
@@ -513,7 +536,9 @@ impl Parser {
     }
 
     fn consume(&mut self, kind: TokenKind, message: &str) -> Result<&Token, ParseError> {
-        if self.check(&kind) { return Ok(self.advance()); }
+        if self.check(&kind) {
+            return Ok(self.advance());
+        }
         Err(ParseError {
             token: self.peek().clone(),
             message: message.to_string(),
@@ -524,11 +549,20 @@ impl Parser {
         self.advance();
 
         while !self.is_at_end() {
-            if self.previous().kind == TokenKind::Semicolon || self.previous().kind == TokenKind::Newline { return; }
+            if self.previous().kind == TokenKind::Semicolon
+                || self.previous().kind == TokenKind::Newline
+            {
+                return;
+            }
 
             match self.peek().kind {
-                TokenKind::Function | TokenKind::Var | TokenKind::Let |
-                TokenKind::If | TokenKind::While | TokenKind::Print | TokenKind::Return => return,
+                TokenKind::Function
+                | TokenKind::Var
+                | TokenKind::Let
+                | TokenKind::If
+                | TokenKind::While
+                | TokenKind::Print
+                | TokenKind::Return => return,
                 _ => {}
             }
 

@@ -4,10 +4,7 @@ use std::process::Command;
 pub fn run_tests() {
     println!("=== Failang Test Runner | مشغل اختبارات Failang ===");
 
-    let dirs = [
-        "tests/language",
-        "tests/runtime",
-    ];
+    let dirs = ["tests/language", "tests/runtime"];
 
     let mut failed = false;
 
