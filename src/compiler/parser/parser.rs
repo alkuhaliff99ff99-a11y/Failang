@@ -524,7 +524,7 @@ impl Parser {
         self.advance();
 
         while !self.is_at_end() {
-            if self.previous().kind == TokenKind::Semicolon { return; }
+            if self.previous().kind == TokenKind::Semicolon || self.previous().kind == TokenKind::Newline { return; }
 
             match self.peek().kind {
                 TokenKind::Function | TokenKind::Var | TokenKind::Let |
