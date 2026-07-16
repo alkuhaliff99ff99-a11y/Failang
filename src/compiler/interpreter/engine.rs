@@ -128,7 +128,7 @@ impl Interpreter {
             }
             Expr::Variable(name) => {
                 self.environment.get(&name.lexeme)
-                    .map_err(ControlFlow::Error)
+                    .ok_or_else(|| ControlFlow::Error(format!("المتغير '{}' غير معرف.", name.lexeme)))
             }
             Expr::IndexAssign { callee, index, value } => {
                 let evaluated_val = self.evaluate(value)?;
@@ -141,7 +141,7 @@ impl Interpreter {
 
                 if let Expr::Variable(name) = &**callee {
                     let mut arr_val = self.environment.get(&name.lexeme)
-                        .map_err(ControlFlow::Error)?;
+                        .ok_or_else(|| ControlFlow::Error(format!("المتغير '{}' غير معرف.", name.lexeme)))?;
 
                     if let Value::Array(ref mut elements) = arr_val {
                         if idx >= elements.len() {
@@ -340,7 +340,7 @@ impl Interpreter {
                             )));
                         }
                         
-                        let mut local_env = Environment::new_with_enclosing(std::sync::Arc::new(std::sync::Mutex::new(self.environment.clone())));
+                        let mut local_env = Environment::new_with_enclosing(std::rc::Rc::new(std::cell::RefCell::new(self.environment.clone())));
                         for (param, arg) in params.iter().zip(evaluated_args.iter()) {
                             local_env.define(param.lexeme.clone(), arg.clone());
                         }
