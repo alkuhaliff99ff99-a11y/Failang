@@ -316,22 +316,36 @@ impl Interpreter {
                                 }
                                 Ok(Value::String(evaluated_args[0].to_string()))
                             }
-                            "number" => {
-                                if evaluated_args.len() != 1 {
-                                    return Err(ControlFlow::Error(DiagnosticError::new("دالة رقم تحتاج إلى وسيط واحد.", "num() function requires exactly one argument.").display()));
-                                }
-                                match &evaluated_args[0] {
-                                    Value::Number(n) => Ok(Value::Number(*n)),
-                                    Value::String(s) => {
-                                        if let Ok(n) = s.trim().parse::<f64>() {
-                                            Ok(Value::Number(n))
-                                        } else {
-                                            Err(ControlFlow::Error(DiagnosticError::new(&format!("تعذر تحويل النص {} إلى رقم.", s), &format!("Could not convert string {} to number.", s)).display()))
-                                        }
-                                    }
-                                    _ => Err(ControlFlow::Error(DiagnosticError::new("دالة رقم تستقبل رقماً أو نصاً قابلاً للتحويل فقط.", "num() function only accepts a number or a convertible string.").display())),
+                    "number" => {
+                        if evaluated_args.len() != 1 {
+                            return Err(ControlFlow::Error(DiagnosticError::new(
+                                "دالة رقم تحتاج إلى وسيط واحد.",
+                                "number() function requires exactly one argument."
+                            ).display()));
+                        }
+                        match &evaluated_args[0] {
+                            Value::Number(n) => Ok(Value::Number(*n)),
+                            Value::Boolean(b) => Ok(Value::Number(if *b { 1.0 } else { 0.0 })),
+                            Value::Nil => Ok(Value::Number(0.0)),
+                            Value::String(s) => {
+                                if let Ok(n) = s.trim().parse::<f64>() {
+                                    Ok(Value::Number(n))
+                                } else {
+                                    Err(ControlFlow::Error(DiagnosticError::new(
+                                        &format!("تعذر تحويل النص \"{}\" إلى رقم.", s),
+                                        &format!("Could not convert string \"{}\" to number.", s)
+                                    ).display()))
                                 }
                             }
+                            other => {
+                                let t = other.type_of();
+                                Err(ControlFlow::Error(DiagnosticError::new(
+                                    &format!("لا يمكن تحويل نوع ({}) إلى رقم.", t),
+                                    &format!("Cannot convert type ({}) to number.", t)
+                                ).display()))
+                            }
+                        }
+                    }
                             _ => Err(ControlFlow::Error(format!("دالة مدمجة غير معرفة: {}", name))),
                         }
                     }
