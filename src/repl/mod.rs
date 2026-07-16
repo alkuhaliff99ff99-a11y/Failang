@@ -2,6 +2,7 @@ use std::io::{self, Write};
 use crate::compiler::interpreter::Interpreter;
 use crate::compiler::lexer::Lexer;
 use crate::compiler::parser::Parser;
+use crate::diagnostics::error::DiagnosticError;
 
 // أكواد ألوان ANSI بسيطة ومضمونة التوافق
 const GREEN: &str = "\x1b[32m";
@@ -86,10 +87,9 @@ pub fn execute(source: &str, interpreter: &mut Interpreter) {
         }
         Err(errors) => {
             for err in errors {
-                eprintln!(
-                    "{}[FSL:Parser] خطأ نحوي عند الرمز '{}': {}{}",
-                    RED, err.token.lexeme, err.message, RESET
-                );
+                // هنا نقوم باستدعاء الدالة المذكورة
+                let formatted_error = DiagnosticError::display_parse_error(&err.token, &err.message);
+                eprintln!("{}{}{}", RED, formatted_error, RESET);
             }
         }
     }
