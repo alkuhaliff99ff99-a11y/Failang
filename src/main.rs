@@ -1,3 +1,4 @@
+pub mod tools;
 mod diagnostics;
 use std::env;
 

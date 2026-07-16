@@ -5,7 +5,6 @@ use crate::compiler::interpreter::value::Value;
 use crate::diagnostics::error::translate;
 use crate::diagnostics::reporter::report;
 
-// هيكل للتحكم في تدفق البرنامج عند مواجهة دالة الإرجاع "return"
 #[derive(Debug, Clone)]
 pub enum ControlFlow {
     Return(Value),
@@ -19,7 +18,6 @@ pub struct Interpreter {
 impl Interpreter {
     pub fn new() -> Self {
         let mut env = Environment::new();
-
         env.define("طول".to_string(), Value::Builtin("length".to_string()));
         env.define("نوع".to_string(), Value::Builtin("type".to_string()));
         env.define("أضف".to_string(), Value::Builtin("append".to_string()));
@@ -30,7 +28,6 @@ impl Interpreter {
         env.define("استبدل".to_string(), Value::Builtin("replace".to_string()));
         env.define("نص".to_string(), Value::Builtin("string".to_string()));
         env.define("رقم".to_string(), Value::Builtin("number".to_string()));
-
         Self { environment: env }
     }
 
@@ -63,7 +60,7 @@ impl Interpreter {
                     Value::String(s) => println!("{}", s),
                     Value::Boolean(b) => println!("{}", if b { "صواب" } else { "خطأ" }),
                     Value::Nil => println!("عدم"),
-                    _ => println!("{}", val), // استخدام طباعة Display المخصصة التي صممناها سابقاً
+                    _ => println!("{}", val),
                 }
             }
             Stmt::Var { name, initializer } => {
@@ -121,7 +118,7 @@ impl Interpreter {
                 if val == "true" || val == "صواب" { return Ok(Value::Boolean(true)); }
                 if val == "false" || val == "خطأ" { return Ok(Value::Boolean(false)); }
                 if val == "nil" || val == "عدم" { return Ok(Value::Nil); }
-                
+
                 let cleaned = if val.starts_with('"') && val.ends_with('"') {
                     val[1..val.len()-1].to_string()
                 } else {
@@ -136,7 +133,7 @@ impl Interpreter {
             Expr::IndexAssign { callee, index, value } => {
                 let evaluated_val = self.evaluate(&value)?;
                 let evaluated_index = self.evaluate(index)?;
-                
+
                 let idx = match evaluated_index {
                     Value::Number(n) => n as usize,
                     _ => return Err(ControlFlow::Error("يجب أن يكون الفهرس رقماً صحيحاً.".to_string())),
@@ -190,6 +187,14 @@ impl Interpreter {
             Expr::Binary { left, operator, right } => {
                 let l = self.evaluate(left)?;
                 let r = self.evaluate(right)?;
+
+                if operator.kind == TokenKind::EqualEqual || operator.lexeme == "يساوي" {
+                    return Ok(Value::Boolean(l == r));
+                }
+                if operator.kind == TokenKind::BangEqual {
+                    return Ok(Value::Boolean(l != r));
+                }
+
                 match (l, r) {
                     (Value::Number(lv), Value::Number(rv)) => {
                         match operator.kind {
@@ -197,14 +202,12 @@ impl Interpreter {
                             TokenKind::LessEqual => Ok(Value::Boolean(lv <= rv)),
                             TokenKind::Greater => Ok(Value::Boolean(lv > rv)),
                             TokenKind::GreaterEqual => Ok(Value::Boolean(lv >= rv)),
-                            TokenKind::EqualEqual => Ok(Value::Boolean(lv == rv)),
-                            TokenKind::BangEqual => Ok(Value::Boolean(lv != rv)),
                             TokenKind::Plus => Ok(Value::Number(lv + rv)),
                             TokenKind::Minus => Ok(Value::Number(lv - rv)),
                             TokenKind::Star => Ok(Value::Number(lv * rv)),
                             TokenKind::Slash => {
-                                if rv == 0.0 { 
-                                    return Err(ControlFlow::Error("خطأ: لا يمكن القسمة على صفر".to_string())); 
+                                if rv == 0.0 {
+                                    return Err(ControlFlow::Error("خطأ: لا يمكن القسمة على صفر".to_string()));
                                 }
                                 Ok(Value::Number(lv / rv))
                             }
@@ -227,21 +230,14 @@ impl Interpreter {
                             Err(ControlFlow::Error("العملية الوحيدة المتاحة للنصوص هي الجمع (+)".to_string()))
                         }
                     }
-        
-            (Value::Boolean(lb), Value::Boolean(rb)) => {
-                match operator.kind {
-                    TokenKind::AndAnd => Ok(Value::Boolean(lb && rb)),
-                    TokenKind::OrOr => Ok(Value::Boolean(lb || rb)),
-                    TokenKind::EqualEqual => Ok(Value::Boolean(lb == rb)),
-                    TokenKind::BangEqual => Ok(Value::Boolean(lb != rb)),
-                    _ => Err(ControlFlow::Error(format!(
-                        "مشغل غير مدعوم: {:?}",
-                        operator.kind
-                    ))),
-                }
-            }
-
-            (left_val, right_val) => Err(ControlFlow::Error(format!("خطأ حسابي: لا يمكن إجراء عملية بين {:?} و {:?}", left_val, right_val))),
+                    (Value::Boolean(lb), Value::Boolean(rb)) => {
+                        match operator.kind {
+                            TokenKind::AndAnd => Ok(Value::Boolean(lb && rb)),
+                            TokenKind::OrOr => Ok(Value::Boolean(lb || rb)),
+                            _ => Err(ControlFlow::Error(format!("مشغل غير مدعوم: {:?}", operator.kind))),
+                        }
+                    }
+                    (left_val, right_val) => Err(ControlFlow::Error(format!("خطأ حسابي: لا يمكن إجراء عملية بين {:?} و {:?}", left_val, right_val))),
                 }
             }
             Expr::Grouping(inner) => self.evaluate(inner),
@@ -279,239 +275,87 @@ impl Interpreter {
             }
             Expr::Call { callee, paren: _, arguments } => {
                 let callee_val = self.evaluate(callee)?;
-                
                 let mut evaluated_args = Vec::new();
                 for arg in arguments {
                     evaluated_args.push(self.evaluate(arg)?);
                 }
-
                 match callee_val {
                     Value::Builtin(name) => {
                         match name.as_str() {
                             "length" => {
                                 if evaluated_args.len() != 1 {
-                                    return Err(ControlFlow::Error(
-                                        "دالة طول تحتاج إلى وسيط واحد.".to_string()
-                                    ));
+                                    return Err(ControlFlow::Error("دالة طول تحتاج إلى وسيط واحد.".to_string()));
                                 }
-
                                 match &evaluated_args[0] {
                                     Value::Array(items) => Ok(Value::Number(items.len() as f64)),
                                     Value::String(text) => Ok(Value::Number(text.chars().count() as f64)),
-                                    _ => Err(ControlFlow::Error(
-                                        "دالة طول تعمل مع النصوص والمصفوفات فقط.".to_string()
-                                    )),
+                                    _ => Err(ControlFlow::Error("دالة طول تستقبل مصفوفة أو نصاً فقط.".to_string())),
                                 }
                             }
-
                             "type" => {
                                 if evaluated_args.len() != 1 {
-                                    return Err(ControlFlow::Error(
-                                        "دالة نوع تحتاج إلى وسيط واحد.".to_string()
-                                    ));
+                                    return Err(ControlFlow::Error("دالة نوع تحتاج إلى وسيط واحد.".to_string()));
                                 }
-
-                                let t = match &evaluated_args[0] {
-                                    Value::Number(_) => "رقم",
-                                    Value::String(_) => "نص",
-                                    Value::Boolean(_) => "منطقي",
-                                    Value::Array(_) => "مصفوفة",
-                                    Value::Function { .. } => "دالة",
-                                    _ => "عدم",
-                                };
-
-                                Ok(Value::String(t.to_string()))
-                            }
-                            "append" => {
-                                if evaluated_args.len() != 2 {
-                                    return Err(ControlFlow::Error(
-                                        "دالة أضف تحتاج إلى اسم مصفوفة وقيمة.".to_string()
-                                    ));
-                                }
-
-                                if let Expr::Variable(name) = &arguments[0] {
-                                    let mut items = match evaluated_args[0].clone() {
-                                        Value::Array(v) => v,
-                                        _ => return Err(ControlFlow::Error(
-                                            "أول وسيط في أضف يجب أن يكون مصفوفة.".to_string()
-                                        )),
-                                    };
-
-                                    items.push(evaluated_args[1].clone());
-
-                                    self.environment.assign(
-                                        &name.lexeme,
-                                        Value::Array(items.clone())
-                                    ).map_err(|e| ControlFlow::Error(e))?;
-
-                                    Ok(Value::Array(items))
-                                } else {
-                                    Err(ControlFlow::Error(
-                                        "أضف تحتاج إلى اسم مصفوفة.".to_string()
-                                    ))
-                                }
-                            }
-
-                            "first" => {
                                 match &evaluated_args[0] {
-                                    Value::Array(items) => {
-                                        Ok(items.first().cloned().unwrap_or(Value::Nil))
-                                    }
-                                    _ => Err(ControlFlow::Error(
-                                        "أول تعمل مع المصفوفات فقط.".to_string()
-                                    )),
+                                    Value::Number(_) => Ok(Value::String("رقم".to_string())),
+                                    Value::String(_) => Ok(Value::String("نص".to_string())),
+                                    Value::Boolean(_) => Ok(Value::String("منطقي".to_string())),
+                                    Value::Array(_) => Ok(Value::String("مصفوفة".to_string())),
+                                    Value::Function { .. } => Ok(Value::String("دالة".to_string())),
+                                    Value::Builtin(_) => Ok(Value::String("دالة_مدمجة".to_string())),
+                                    Value::Nil => Ok(Value::String("عدم".to_string())),
                                 }
                             }
-
-                            "last" => {
-                                match &evaluated_args[0] {
-                                    Value::Array(items) => {
-                                        Ok(items.last().cloned().unwrap_or(Value::Nil))
-                                    }
-                                    _ => Err(ControlFlow::Error(
-                                        "آخر تعمل مع المصفوفات فقط.".to_string()
-                                    )),
-                                }
-                            }
-
-                            "contains" => {
-                                if evaluated_args.len() != 2 {
-                                    return Err(ControlFlow::Error(
-                                        "يحتوي تحتاج إلى نصين.".to_string()
-                                    ));
-                                }
-
-                                match (&evaluated_args[0], &evaluated_args[1]) {
-                                    (Value::String(text), Value::String(search)) => {
-                                        Ok(Value::Boolean(text.contains(search)))
-                                    }
-                                    _ => Err(ControlFlow::Error(
-                                        "يحتوي تعمل مع النصوص فقط.".to_string()
-                                    )),
-                                }
-                            }
-
-                            "slice" => {
-                                if evaluated_args.len() != 3 {
-                                    return Err(ControlFlow::Error(
-                                        "قطع تحتاج إلى نص وبدايه ونهاية.".to_string()
-                                    ));
-                                }
-
-                                match (&evaluated_args[0], &evaluated_args[1], &evaluated_args[2]) {
-                                    (Value::String(text), Value::Number(start), Value::Number(end)) => {
-                                        let chars: Vec<char> = text.chars().collect();
-                                        let result: String = chars[*start as usize..*end as usize]
-                                            .iter()
-                                            .collect();
-                                        Ok(Value::String(result))
-                                    }
-                                    _ => Err(ControlFlow::Error(
-                                        "قطع تحتاج إلى نص وأرقام.".to_string()
-                                    )),
-                                }
-                            }
-
-                            "replace" => {
-                                if evaluated_args.len() != 3 {
-                                    return Err(ControlFlow::Error(
-                                        "استبدل تحتاج إلى ثلاثة نصوص.".to_string()
-                                    ));
-                                }
-
-                                match (&evaluated_args[0], &evaluated_args[1], &evaluated_args[2]) {
-                                    (Value::String(text), Value::String(old), Value::String(new)) => {
-                                        Ok(Value::String(text.replace(old, new)))
-                                    }
-                                    _ => Err(ControlFlow::Error(
-                                        "استبدل تعمل مع النصوص فقط.".to_string()
-                                    )),
-                                }
-                            }
-
                             "string" => {
                                 if evaluated_args.len() != 1 {
-                                    return Err(ControlFlow::Error(
-                                        "نص تحتاج إلى قيمة واحدة.".to_string()
-                                    ));
+                                    return Err(ControlFlow::Error("دالة نص تحتاج إلى وسيط واحد.".to_string()));
                                 }
-
-                                match &evaluated_args[0] {
-                                    Value::Number(n) => Ok(Value::String(n.to_string())),
-                                    Value::Boolean(b) => Ok(Value::String(
-                                        if *b { "صحيح".to_string() } else { "خطأ".to_string() }
-                                    )),
-                                    Value::String(s) => Ok(Value::String(s.clone())),
-                                    other => Ok(Value::String(format!("{}", other))),
-                                }
+                                Ok(Value::String(evaluated_args[0].to_string()))
                             }
-
                             "number" => {
                                 if evaluated_args.len() != 1 {
-                                    return Err(ControlFlow::Error(
-                                        "رقم تحتاج إلى قيمة واحدة.".to_string()
-                                    ));
+                                    return Err(ControlFlow::Error("دالة رقم تحتاج إلى وسيط واحد.".to_string()));
                                 }
-
                                 match &evaluated_args[0] {
+                                    Value::Number(n) => Ok(Value::Number(*n)),
                                     Value::String(s) => {
-                                        match s.parse::<f64>() {
-                                            Ok(n) => Ok(Value::Number(n)),
-                                            Err(_) => Err(ControlFlow::Error(
-                                                "لا يمكن تحويل النص إلى رقم.".to_string()
-                                            )),
+                                        if let Ok(n) = s.trim().parse::<f64>() {
+                                            Ok(Value::Number(n))
+                                        } else {
+                                            Err(ControlFlow::Error(format!("تعذر تحويل النص '{}' إلى رقم.", s)))
                                         }
                                     }
-                                    Value::Number(n) => Ok(Value::Number(*n)),
-                                    _ => Err(ControlFlow::Error(
-                                        "رقم تعمل مع النصوص والأرقام فقط.".to_string()
-                                    )),
+                                    _ => Err(ControlFlow::Error("دالة رقم تستقبل رقماً أو نصاً قابلاً للتحويل فقط.".to_string())),
                                 }
                             }
-
-                            _ => Err(ControlFlow::Error(
-                                "دالة مدمجة غير معروفة.".to_string()
-                            )),
+                            _ => Err(ControlFlow::Error(format!("دالة مدمجة غير معرفة: {}", name))),
                         }
                     }
-
-                    Value::Function { name: _, params, body } => {
+                    Value::Function { params, body, name: _ } => {
                         if evaluated_args.len() != params.len() {
                             return Err(ControlFlow::Error(format!(
-                                "خطأ في تمرير المعاملات: المتوقع {} وسيطاً، ولكن تم تمرير {}.",
+                                "خطأ: عدد المعاملات غير متطابق. المتوقع: {}، الممرر: {}.",
                                 params.len(),
                                 evaluated_args.len()
                             )));
                         }
-
+                        
+                        let mut local_env = Environment::new_with_enclosing(std::sync::Arc::new(std::sync::Mutex::new(self.environment.clone())));
+                        for (param, arg) in params.iter().zip(evaluated_args.iter()) {
+                            local_env.define(param.lexeme.clone(), arg.clone());
+                        }
                         let previous_env = self.environment.clone();
-                        let mut local_env = Environment::new_with_enclosing(std::sync::Arc::new(std::sync::Mutex::new(previous_env.clone())));
-                        for (param, arg_val) in params.iter().zip(evaluated_args.iter()) {
-                            local_env.define(param.lexeme.clone(), arg_val.clone());
-                        }
-
                         self.environment = local_env;
-
-                        let mut return_value = Value::Nil;
-                        for stmt in &body {
-                            if let Err(cf) = self.execute(stmt) {
-                                match cf {
-                                    ControlFlow::Return(val) => {
-                                        return_value = val;
-                                        break;
-                                    }
-                                    ControlFlow::Error(e) => {
-                                        self.environment = previous_env;
-                                        return Err(ControlFlow::Error(e));
-                                    }
-                                }
-                            }
-                        }
-
+                        
+                        let result = self.execute(&Stmt::Block(body.clone()));
                         self.environment = previous_env;
-                        Ok(return_value)
+                        match result {
+                            Ok(_) => Ok(Value::Nil),
+                            Err(ControlFlow::Return(val)) => Ok(val),
+                            Err(e) => Err(e),
+                        }
                     }
-                    _ => Err(ControlFlow::Error("لا يمكن استدعاء هذا الكائن كدالة.".to_string())),
+                    _ => Err(ControlFlow::Error("لا يمكن استدعاء كائن غير قابل للاستدعاء.".to_string())),
                 }
             }
         }
@@ -519,8 +363,11 @@ impl Interpreter {
 
     fn is_truthy(&self, val: &Value) -> bool {
         match val {
-            Value::Boolean(b) => *b,
             Value::Nil => false,
+            Value::Boolean(b) => *b,
+            Value::Number(n) => *n != 0.0,
+            Value::String(s) => !s.is_empty(),
+            Value::Array(items) => !items.is_empty(),
             _ => true,
         }
     }

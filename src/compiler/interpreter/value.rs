@@ -2,7 +2,7 @@ use std::fmt;
 use crate::compiler::lexer::Token;
 use crate::compiler::parser::Stmt;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum Value {
     Number(f64),
     String(String),
@@ -13,7 +13,7 @@ pub enum Value {
         body: Vec<Stmt>,
     },
     Builtin(String),
-    Array(Vec<Value>), // إضافة نوع المصفوفة هنا
+    Array(Vec<Value>),
     Nil,
 }
 
@@ -22,21 +22,14 @@ impl fmt::Display for Value {
         match self {
             Value::Number(n) => write!(f, "{}", n),
             Value::String(s) => write!(f, "{}", s),
-            Value::Boolean(b) => write!(f, "{}", if *b { "صحيح" } else { "خطأ" }),
+            Value::Boolean(b) => write!(f, "{}", if *b { "صواب" } else { "خطأ" }),
             Value::Function { name, .. } => write!(f, "<دالة {}>", name.lexeme),
-            Value::Builtin(name) => write!(f, "<دالة مدمجة {}>", name),
-            Value::Nil => write!(f, "عدم"),
+            Value::Builtin(name) => write!(f, "<دالة_مدمجة {}>", name),
             Value::Array(elements) => {
-                let mut result = String::from("[");
-                for (i, el) in elements.iter().enumerate() {
-                    result.push_str(&format!("{}", el));
-                    if i < elements.len() - 1 {
-                        result.push_str(", ");
-                    }
-                }
-                result.push(']');
-                write!(f, "{}", result)
+                let elems: Vec<String> = elements.iter().map(|e| e.to_string()).collect();
+                write!(f, "[{}]", elems.join(", "))
             }
+            Value::Nil => write!(f, "عدم"),
         }
     }
 }
