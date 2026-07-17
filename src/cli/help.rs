@@ -1,36 +1,33 @@
 pub fn show() {
-    println!("=== Failang CLI | أوامر Failang ===");
+    println!("Failang v0.2.3");
+    println!("Fast • Safe • Logical");
+    println!("Arabic / English Programming Language");
     println!();
-
     println!("Usage:");
-    println!("    fsl <command> [options]");
+    println!("  fsl <command> [options]");
+    println!("  fsl file.fsl");
     println!();
 
     println!("Commands:");
-    println!("    run   : تشغيل ملف | Run file");
-    println!("            مثال: fsl run main.fsl");
-    println!();
-
-    println!("    test  : تشغيل الاختبارات | Run tests");
-    println!("            مثال: fsl test");
-    println!();
-
-    println!("    build : فحص البناء | Check build");
-    println!("            مثال: fsl build");
-    println!();
-
-    println!("    new   : إنشاء مشروع | Create project");
-    println!("            مثال: fsl new project_name");
-    println!();
-
-    println!("    fmt   : تنسيق الكود | Format code");
-    println!("            مثال: fsl fmt main.fsl");
-    println!();
-
-    println!("    help  : عرض المساعدة | Show help");
+    println!("  run <file.fsl>       Run a Failang program");
+    println!("  test                 Run project tests");
+    println!("  build                Build project");
+    println!("  fmt                  Format Failang code");
+    println!("  new <name>           Create new project");
+    println!("  help                 Show help information");
     println!();
 
     println!("Options:");
-    println!("    --help       عرض المساعدة");
-    println!("    --version    عرض الإصدار");
+    println!("  -h, --help           Show this help");
+    println!("  -v, --version        Show Failang version");
+    println!();
+
+    println!("Examples:");
+    println!("  fsl hello.fsl");
+    println!("  fsl run hello.fsl");
+    println!("  fsl new MyProject");
+    println!();
+
+    println!("Documentation:");
+    println!("  https://github.com/alkuhaliff99ff99-a11y/Failang");
 }
