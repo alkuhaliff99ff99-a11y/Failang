@@ -49,6 +49,10 @@ impl Interpreter {
         env.define("starts_with".to_string(), Value::Builtin("starts_with".to_string()));
         env.define("ينتهي_بـ".to_string(), Value::Builtin("ends_with".to_string()));
         env.define("ends_with".to_string(), Value::Builtin("ends_with".to_string()));
+        env.define("حرف_عند".to_string(), Value::Builtin("char_at".to_string()));
+        env.define("char_at".to_string(), Value::Builtin("char_at".to_string()));
+        env.define("موضع".to_string(), Value::Builtin("index_of".to_string()));
+        env.define("index_of".to_string(), Value::Builtin("index_of".to_string()));
         Self { environment: env }
     }
 
@@ -535,6 +539,36 @@ impl Interpreter {
                                             .display(),
                                         ))
                                     }
+                                }
+                            }
+                            "char_at" => {
+                                if evaluated_args.len() != 2 {
+                                    return Err(ControlFlow::Error("char_at يحتاج نصاً ورقماً".to_string()));
+                                }
+
+                                match (&evaluated_args[0], &evaluated_args[1]) {
+                                    (Value::String(text), Value::Number(index)) => {
+                                        match text.chars().nth(*index as usize) {
+                                            Some(c) => Ok(Value::String(c.to_string())),
+                                            None => Err(ControlFlow::Error("الموضع خارج حدود النص".to_string()))
+                                        }
+                                    }
+                                    _ => Err(ControlFlow::Error("char_at يعمل مع نص ورقم فقط".to_string()))
+                                }
+                            }
+                            "index_of" => {
+                                if evaluated_args.len() != 2 {
+                                    return Err(ControlFlow::Error("index_of يحتاج نصين".to_string()));
+                                }
+
+                                match (&evaluated_args[0], &evaluated_args[1]) {
+                                    (Value::String(text), Value::String(search)) => {
+                                        match text.find(search) {
+                                            Some(i) => Ok(Value::Number(i as f64)),
+                                            None => Ok(Value::Number(-1.0))
+                                        }
+                                    }
+                                    _ => Err(ControlFlow::Error("index_of يعمل مع النصوص فقط".to_string()))
                                 }
                             }
                             "starts_with" | "ends_with" => {
