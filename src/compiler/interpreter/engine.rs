@@ -20,15 +20,21 @@ impl Interpreter {
     pub fn new() -> Self {
         let mut env = Environment::new();
         env.define("طول".to_string(), Value::Builtin("length".to_string()));
+        env.define("len".to_string(), Value::Builtin("length".to_string()));
         env.define("نوع".to_string(), Value::Builtin("type".to_string()));
-        env.define("أضف".to_string(), Value::Builtin("append".to_string()));
-        env.define("أول".to_string(), Value::Builtin("first".to_string()));
-        env.define("آخر".to_string(), Value::Builtin("last".to_string()));
-        env.define("يحتوي".to_string(), Value::Builtin("contains".to_string()));
-        env.define("قطع".to_string(), Value::Builtin("slice".to_string()));
-        env.define("استبدل".to_string(), Value::Builtin("replace".to_string()));
+        env.define("type".to_string(), Value::Builtin("type".to_string()));
         env.define("نص".to_string(), Value::Builtin("string".to_string()));
+        env.define("str".to_string(), Value::Builtin("string".to_string()));
         env.define("رقم".to_string(), Value::Builtin("number".to_string()));
+        env.define("number".to_string(), Value::Builtin("number".to_string()));
+        env.define("أضف".to_string(), Value::Builtin("append".to_string()));
+        env.define("append".to_string(), Value::Builtin("append".to_string()));
+        env.define("أول".to_string(), Value::Builtin("first".to_string()));
+        env.define("first".to_string(), Value::Builtin("first".to_string()));
+        env.define("آخر".to_string(), Value::Builtin("last".to_string()));
+        env.define("last".to_string(), Value::Builtin("last".to_string()));
+        env.define("يحتوي".to_string(), Value::Builtin("contains".to_string()));
+        env.define("contains".to_string(), Value::Builtin("contains".to_string()));
         Self { environment: env }
     }
 
@@ -402,6 +408,47 @@ impl Interpreter {
                                         )
                                         .display(),
                                     )),
+                                }
+                            }
+                            "append" => {
+                                if evaluated_args.len() != 2 {
+                                    return Err(ControlFlow::Error("append يحتاج مصفوفة وعنصر".to_string()));
+                                }
+                                match &evaluated_args[0] {
+                                    Value::Array(items) => {
+                                        let mut result = items.clone();
+                                        result.push(evaluated_args[1].clone());
+                                        Ok(Value::Array(result))
+                                    }
+                                    _ => Err(ControlFlow::Error("append يعمل مع المصفوفات فقط".to_string()))
+                                }
+                            }
+                            "first" => {
+                                match &evaluated_args[0] {
+                                    Value::Array(items) => Ok(items.first().cloned().unwrap_or(Value::Nil)),
+                                    _ => Err(ControlFlow::Error("first يعمل مع المصفوفات فقط".to_string()))
+                                }
+                            }
+                            "last" => {
+                                match &evaluated_args[0] {
+                                    Value::Array(items) => Ok(items.last().cloned().unwrap_or(Value::Nil)),
+                                    _ => Err(ControlFlow::Error("last يعمل مع المصفوفات فقط".to_string()))
+                                }
+                            }
+                            "contains" => {
+                                if evaluated_args.len() != 2 {
+                                    return Err(ControlFlow::Error("contains يحتاج قيمتين".to_string()));
+                                }
+                                match &evaluated_args[0] {
+                                    Value::Array(items) => Ok(Value::Boolean(items.contains(&evaluated_args[1]))),
+                                    Value::String(text) => {
+                                        if let Value::String(find) = &evaluated_args[1] {
+                                            Ok(Value::Boolean(text.contains(find)))
+                                        } else {
+                                            Ok(Value::Boolean(false))
+                                        }
+                                    }
+                                    _ => Ok(Value::Boolean(false))
                                 }
                             }
                             "type" => {
