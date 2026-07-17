@@ -4,6 +4,7 @@ use crate::diagnostics::error::translate;
 use crate::diagnostics::error::DiagnosticError;
 use crate::diagnostics::reporter::report;
 use crate::runtime::environment::Environment;
+use crate::runtime::stdlib;
 use crate::runtime::value::Value;
 
 #[derive(Debug, Clone)]
@@ -21,8 +22,26 @@ impl Interpreter {
         let mut env = Environment::new();
 
         for name in [
-            "length", "len", "طول", "type", "نوع", "string", "str", "نص", "number", "رقم", "abs",
-            "max", "min", "version",
+            "length",
+            "len",
+            "طول",
+            "type",
+            "نوع",
+            "string",
+            "str",
+            "نص",
+            "number",
+            "رقم",
+            "abs",
+            "مطلق",
+            "max",
+            "أكبر",
+            "min",
+            "أصغر",
+            "empty",
+            "فارغ",
+            "version",
+            "إصدار",
         ] {
             env.define(name.to_string(), Value::Builtin(name.to_string()));
         }
@@ -433,50 +452,25 @@ impl Interpreter {
                             }
                             Ok(Value::String(evaluated_args[0].to_string()))
                         }
-                        "abs" | "مطلق" => {
-                            if evaluated_args.len() != 1 {
-                                return Err(ControlFlow::Error(
-                                    "abs() requires one argument".to_string(),
-                                ));
-                            }
-
-                            match &evaluated_args[0] {
-                                Value::Number(n) => Ok(Value::Number(crate::stdlib::math::abs(*n))),
-                                _ => Err(ControlFlow::Error("abs() requires a number".to_string())),
-                            }
-                        }
-
-                        "max" | "أكبر" => {
-                            if evaluated_args.len() != 2 {
-                                return Err(ControlFlow::Error(
-                                    "max() requires two arguments".to_string(),
-                                ));
-                            }
-
-                            match (&evaluated_args[0], &evaluated_args[1]) {
-                                (Value::Number(a), Value::Number(b)) => {
-                                    Ok(Value::Number(crate::stdlib::math::max(*a, *b)))
+                        "abs" | "مطلق" | "max" | "أكبر" | "min" | "أصغر" | "empty" | "فارغ"
+                        | "version" | "إصدار" => {
+                            let module = match name.as_str() {
+                                "abs" | "مطلق" | "max" | "أكبر" | "min" | "أصغر" => {
+                                    "math"
                                 }
-                                _ => Err(ControlFlow::Error("max() requires numbers".to_string())),
+                                "length" | "len" | "طول" | "empty" | "فارغ" => "text",
+                                "version" | "إصدار" => "system",
+                                _ => "",
+                            };
+
+                            match stdlib::call(module, &name, evaluated_args) {
+                                Some(Ok(value)) => Ok(value),
+                                Some(Err(error)) => Err(ControlFlow::Error(error)),
+                                None => Err(ControlFlow::Error(
+                                    "Builtin function unavailable".to_string(),
+                                )),
                             }
                         }
-
-                        "min" | "أصغر" => {
-                            if evaluated_args.len() != 2 {
-                                return Err(ControlFlow::Error(
-                                    "min() requires two arguments".to_string(),
-                                ));
-                            }
-
-                            match (&evaluated_args[0], &evaluated_args[1]) {
-                                (Value::Number(a), Value::Number(b)) => {
-                                    Ok(Value::Number(crate::stdlib::math::min(*a, *b)))
-                                }
-                                _ => Err(ControlFlow::Error("min() requires numbers".to_string())),
-                            }
-                        }
-
-                        "version" => Ok(Value::String("FSL 0.2.3".to_string())),
 
                         "number" | "رقم" => {
                             if evaluated_args.len() != 1 {

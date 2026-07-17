@@ -106,9 +106,9 @@ impl Lexer {
         keywords.insert("ارجع".to_string(), TokenKind::Return);
 
         // كلمات المقارنة الطبيعية في Failang
-        keywords.insert("أكبر".to_string(), TokenKind::Greater);
+        keywords.insert("أكبر_من".to_string(), TokenKind::Greater);
         keywords.insert("اصغر".to_string(), TokenKind::Less);
-        keywords.insert("أصغر".to_string(), TokenKind::Less);
+        keywords.insert("أصغر_من".to_string(), TokenKind::Less);
         keywords.insert("يساوي".to_string(), TokenKind::EqualEqual);
         keywords.insert("مساوي".to_string(), TokenKind::EqualEqual);
         keywords.insert("لا".to_string(), TokenKind::BangEqual);
@@ -290,7 +290,7 @@ impl Lexer {
             _ => {
                 if self.is_digit(c) {
                     self.number_token();
-                } else if c.is_alphabetic() || c == '_' || ('ا'..='ي').contains(&c) {
+                } else if c.is_alphabetic() || c == '_' {
                     self.identifier_token();
                 } else {
                     return Err(format!("رموز غير مدعومة في السطر {}: '{}'", self.line, c));
@@ -342,10 +342,7 @@ impl Lexer {
     }
 
     fn identifier_token(&mut self) {
-        while self.peek().is_alphanumeric()
-            || self.peek() == '_'
-            || (self.peek() >= 'ا' && self.peek() <= 'ي')
-        {
+        while self.peek().is_alphanumeric() || self.peek() == '_' {
             self.advance();
         }
 
