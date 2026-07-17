@@ -53,6 +53,12 @@ impl Interpreter {
         env.define("char_at".to_string(), Value::Builtin("char_at".to_string()));
         env.define("موضع".to_string(), Value::Builtin("index_of".to_string()));
         env.define("index_of".to_string(), Value::Builtin("index_of".to_string()));
+        env.define("احذف".to_string(), Value::Builtin("pop".to_string()));
+        env.define("pop".to_string(), Value::Builtin("pop".to_string()));
+        env.define("عكس".to_string(), Value::Builtin("reverse".to_string()));
+        env.define("reverse".to_string(), Value::Builtin("reverse".to_string()));
+        env.define("فارغ".to_string(), Value::Builtin("is_empty".to_string()));
+        env.define("is_empty".to_string(), Value::Builtin("is_empty".to_string()));
         Self { environment: env }
     }
 
@@ -539,6 +545,46 @@ impl Interpreter {
                                             .display(),
                                         ))
                                     }
+                                }
+                            }
+                            "pop" => {
+                                if evaluated_args.len() != 1 {
+                                    return Err(ControlFlow::Error("pop يحتاج مصفوفة واحدة".to_string()));
+                                }
+
+                                match &evaluated_args[0] {
+                                    Value::Array(items) => {
+                                        match items.last() {
+                                            Some(v) => Ok(v.clone()),
+                                            None => Ok(Value::Nil)
+                                        }
+                                    }
+                                    _ => Err(ControlFlow::Error("pop يعمل مع المصفوفات فقط".to_string()))
+                                }
+                            }
+                            "reverse" => {
+                                if evaluated_args.len() != 1 {
+                                    return Err(ControlFlow::Error("reverse يحتاج مصفوفة واحدة".to_string()));
+                                }
+
+                                match &evaluated_args[0] {
+                                    Value::Array(items) => {
+                                        let mut result = items.clone();
+                                        result.reverse();
+                                        Ok(Value::Array(result))
+                                    }
+                                    _ => Err(ControlFlow::Error("reverse يعمل مع المصفوفات فقط".to_string()))
+                                }
+                            }
+                            "is_empty" => {
+                                if evaluated_args.len() != 1 {
+                                    return Err(ControlFlow::Error("is_empty يحتاج قيمة واحدة".to_string()));
+                                }
+
+                                match &evaluated_args[0] {
+                                    Value::Array(items) => Ok(Value::Boolean(items.is_empty())),
+                                    Value::String(text) => Ok(Value::Boolean(text.is_empty())),
+                                    _ => Err(ControlFlow::Error("is_empty يعمل مع النصوص والمصفوفات فقط".to_string()))
                                 }
                             }
                             "char_at" => {
