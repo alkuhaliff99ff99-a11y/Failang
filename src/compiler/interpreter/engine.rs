@@ -61,6 +61,18 @@ impl Interpreter {
         env.define("is_empty".to_string(), Value::Builtin("is_empty".to_string()));
         env.define("مطلق".to_string(), Value::Builtin("abs".to_string()));
         env.define("abs".to_string(), Value::Builtin("abs".to_string()));
+        env.define("جذر".to_string(), Value::Builtin("sqrt".to_string()));
+        env.define("sqrt".to_string(), Value::Builtin("sqrt".to_string()));
+        env.define("قوة".to_string(), Value::Builtin("pow".to_string()));
+        env.define("pow".to_string(), Value::Builtin("pow".to_string()));
+        env.define("تقريب".to_string(), Value::Builtin("round".to_string()));
+        env.define("round".to_string(), Value::Builtin("round".to_string()));
+        env.define("أكبر_قيمة".to_string(), Value::Builtin("max".to_string()));
+        env.define("max".to_string(), Value::Builtin("max".to_string()));
+        env.define("أصغر_قيمة".to_string(), Value::Builtin("min".to_string()));
+        env.define("min".to_string(), Value::Builtin("min".to_string()));
+        env.define("مطلق".to_string(), Value::Builtin("abs".to_string()));
+        env.define("abs".to_string(), Value::Builtin("abs".to_string()));
         env.define("أكبر".to_string(), Value::Builtin("max".to_string()));
         env.define("max".to_string(), Value::Builtin("max".to_string()));
         env.define("أصغر".to_string(), Value::Builtin("min".to_string()));
@@ -580,6 +592,9 @@ impl Interpreter {
                                     [Value::Number(n)] => Ok(Value::Number(n.sqrt())),
                                     _ => Err(ControlFlow::Error("جذر يحتاج رقماً واحداً.".to_string())),
                                 }
+                            }
+                            "round" => {
+                                Ok(Value::Number(evaluated_args[0].to_string().parse::<f64>().unwrap().round()))
                             }
                             "pow" => {
                                 match evaluated_args.as_slice() {
