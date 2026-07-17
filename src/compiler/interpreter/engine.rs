@@ -71,16 +71,6 @@ impl Interpreter {
         env.define("max".to_string(), Value::Builtin("max".to_string()));
         env.define("أصغر_قيمة".to_string(), Value::Builtin("min".to_string()));
         env.define("min".to_string(), Value::Builtin("min".to_string()));
-        env.define("مطلق".to_string(), Value::Builtin("abs".to_string()));
-        env.define("abs".to_string(), Value::Builtin("abs".to_string()));
-        env.define("أكبر".to_string(), Value::Builtin("max".to_string()));
-        env.define("max".to_string(), Value::Builtin("max".to_string()));
-        env.define("أصغر".to_string(), Value::Builtin("min".to_string()));
-        env.define("min".to_string(), Value::Builtin("min".to_string()));
-        env.define("جذر".to_string(), Value::Builtin("sqrt".to_string()));
-        env.define("sqrt".to_string(), Value::Builtin("sqrt".to_string()));
-        env.define("قوة".to_string(), Value::Builtin("pow".to_string()));
-        env.define("pow".to_string(), Value::Builtin("pow".to_string()));
         Self { environment: env }
     }
 
