@@ -21,7 +21,8 @@ impl Interpreter {
         let mut env = Environment::new();
 
         for name in [
-            "length", "len", "type", "string", "str", "number", "abs", "max", "min", "version",
+            "length", "len", "طول", "type", "نوع", "string", "str", "نص", "number", "رقم", "abs",
+            "max", "min", "version",
         ] {
             env.define(name.to_string(), Value::Builtin(name.to_string()));
         }
