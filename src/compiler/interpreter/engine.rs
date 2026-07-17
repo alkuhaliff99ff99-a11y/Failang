@@ -377,7 +377,7 @@ impl Interpreter {
                 }
                 match callee_val {
                     Value::Builtin(name) => match name.as_str() {
-                        "length" => {
+                        "length" | "len" | "طول" => {
                             if evaluated_args.len() != 1 {
                                 return Err(ControlFlow::Error(
                                     DiagnosticError::new(
@@ -401,7 +401,7 @@ impl Interpreter {
                                 )),
                             }
                         }
-                        "type" => {
+                        "type" | "نوع" => {
                             if evaluated_args.len() != 1 {
                                 return Err(ControlFlow::Error(
                                     DiagnosticError::new(
@@ -421,7 +421,7 @@ impl Interpreter {
                                 Value::Nil => Ok(Value::String("عدم".to_string())),
                             }
                         }
-                        "string" => {
+                        "string" | "str" | "نص" => {
                             if evaluated_args.len() != 1 {
                                 return Err(ControlFlow::Error(
                                     DiagnosticError::new(
@@ -478,7 +478,7 @@ impl Interpreter {
 
                         "version" => Ok(Value::String("FSL 0.2.3".to_string())),
 
-                        "number" => {
+                        "number" | "رقم" => {
                             if evaluated_args.len() != 1 {
                                 return Err(ControlFlow::Error(
                                     DiagnosticError::new(
