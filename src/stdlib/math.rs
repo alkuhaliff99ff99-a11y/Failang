@@ -1,23 +1,11 @@
-pub fn abs(value: i64) -> i64 {
-    if value < 0 {
-        -value
-    } else {
-        value
-    }
+pub fn abs(value: f64) -> f64 {
+    value.abs()
 }
 
-pub fn max(a: i64, b: i64) -> i64 {
-    if a > b {
-        a
-    } else {
-        b
-    }
+pub fn max(a: f64, b: f64) -> f64 {
+    a.max(b)
 }
 
-pub fn min(a: i64, b: i64) -> i64 {
-    if a < b {
-        a
-    } else {
-        b
-    }
+pub fn min(a: f64, b: f64) -> f64 {
+    a.min(b)
 }

@@ -19,17 +19,14 @@ pub struct Interpreter {
 impl Interpreter {
     pub fn new() -> Self {
         let mut env = Environment::new();
-        env.define("طول".to_string(), Value::Builtin("length".to_string()));
-        env.define("نوع".to_string(), Value::Builtin("type".to_string()));
-        env.define("أضف".to_string(), Value::Builtin("append".to_string()));
-        env.define("أول".to_string(), Value::Builtin("first".to_string()));
-        env.define("آخر".to_string(), Value::Builtin("last".to_string()));
-        env.define("يحتوي".to_string(), Value::Builtin("contains".to_string()));
-        env.define("قطع".to_string(), Value::Builtin("slice".to_string()));
-        env.define("استبدل".to_string(), Value::Builtin("replace".to_string()));
-        env.define("نص".to_string(), Value::Builtin("string".to_string()));
-        env.define("رقم".to_string(), Value::Builtin("number".to_string()));
-        Self { environment: env }
+
+        for name in [
+            "length", "len", "type", "string", "str", "number", "abs", "max", "min", "version",
+        ] {
+            env.define(name.to_string(), Value::Builtin(name.to_string()));
+        }
+
+        Interpreter { environment: env }
     }
 
     pub fn interpret(&mut self, statements: &[Stmt]) -> Result<(), String> {
@@ -378,110 +375,155 @@ impl Interpreter {
                     evaluated_args.push(self.evaluate(arg)?);
                 }
                 match callee_val {
-                    Value::Builtin(name) => {
-                        match name.as_str() {
-                            "length" => {
-                                if evaluated_args.len() != 1 {
-                                    return Err(ControlFlow::Error(
-                                        DiagnosticError::new(
-                                            "دالة طول تحتاج إلى وسيط واحد.",
-                                            "len() function requires exactly one argument.",
-                                        )
-                                        .display(),
-                                    ));
-                                }
-                                match &evaluated_args[0] {
-                                    Value::Array(items) => Ok(Value::Number(items.len() as f64)),
-                                    Value::String(text) => {
-                                        Ok(Value::Number(text.chars().count() as f64))
-                                    }
-                                    _ => Err(ControlFlow::Error(
-                                        DiagnosticError::new(
-                                            "دالة طول تستقبل مصفوفة أو نصاً فقط.",
-                                            "len() function only accepts arrays or strings.",
-                                        )
-                                        .display(),
-                                    )),
-                                }
+                    Value::Builtin(name) => match name.as_str() {
+                        "length" => {
+                            if evaluated_args.len() != 1 {
+                                return Err(ControlFlow::Error(
+                                    DiagnosticError::new(
+                                        "دالة طول تحتاج إلى وسيط واحد.",
+                                        "len() function requires exactly one argument.",
+                                    )
+                                    .display(),
+                                ));
                             }
-                            "type" => {
-                                if evaluated_args.len() != 1 {
-                                    return Err(ControlFlow::Error(
-                                        DiagnosticError::new(
-                                            "دالة نوع تحتاج إلى وسيط واحد.",
-                                            "type() function requires exactly one argument.",
-                                        )
-                                        .display(),
-                                    ));
+                            match &evaluated_args[0] {
+                                Value::Array(items) => Ok(Value::Number(items.len() as f64)),
+                                Value::String(text) => {
+                                    Ok(Value::Number(text.chars().count() as f64))
                                 }
-                                match &evaluated_args[0] {
-                                    Value::Number(_) => Ok(Value::String("رقم".to_string())),
-                                    Value::String(_) => Ok(Value::String("نص".to_string())),
-                                    Value::Boolean(_) => Ok(Value::String("منطقي".to_string())),
-                                    Value::Array(_) => Ok(Value::String("مصفوفة".to_string())),
-                                    Value::Function { .. } => Ok(Value::String("دالة".to_string())),
-                                    Value::Builtin(_) => {
-                                        Ok(Value::String("دالة_مدمجة".to_string()))
-                                    }
-                                    Value::Nil => Ok(Value::String("عدم".to_string())),
-                                }
+                                _ => Err(ControlFlow::Error(
+                                    DiagnosticError::new(
+                                        "دالة طول تستقبل مصفوفة أو نصاً فقط.",
+                                        "len() function only accepts arrays or strings.",
+                                    )
+                                    .display(),
+                                )),
                             }
-                            "string" => {
-                                if evaluated_args.len() != 1 {
-                                    return Err(ControlFlow::Error(
-                                        DiagnosticError::new(
-                                            "دالة نص تحتاج إلى وسيط واحد.",
-                                            "str() function requires exactly one argument.",
-                                        )
-                                        .display(),
-                                    ));
-                                }
-                                Ok(Value::String(evaluated_args[0].to_string()))
+                        }
+                        "type" => {
+                            if evaluated_args.len() != 1 {
+                                return Err(ControlFlow::Error(
+                                    DiagnosticError::new(
+                                        "دالة نوع تحتاج إلى وسيط واحد.",
+                                        "type() function requires exactly one argument.",
+                                    )
+                                    .display(),
+                                ));
                             }
-                            "number" => {
-                                if evaluated_args.len() != 1 {
-                                    return Err(ControlFlow::Error(
-                                        DiagnosticError::new(
-                                            "دالة رقم تحتاج إلى وسيط واحد.",
-                                            "number() function requires exactly one argument.",
-                                        )
-                                        .display(),
-                                    ));
+                            match &evaluated_args[0] {
+                                Value::Number(_) => Ok(Value::String("رقم".to_string())),
+                                Value::String(_) => Ok(Value::String("نص".to_string())),
+                                Value::Boolean(_) => Ok(Value::String("منطقي".to_string())),
+                                Value::Array(_) => Ok(Value::String("مصفوفة".to_string())),
+                                Value::Function { .. } => Ok(Value::String("دالة".to_string())),
+                                Value::Builtin(_) => Ok(Value::String("دالة_مدمجة".to_string())),
+                                Value::Nil => Ok(Value::String("عدم".to_string())),
+                            }
+                        }
+                        "string" => {
+                            if evaluated_args.len() != 1 {
+                                return Err(ControlFlow::Error(
+                                    DiagnosticError::new(
+                                        "دالة نص تحتاج إلى وسيط واحد.",
+                                        "str() function requires exactly one argument.",
+                                    )
+                                    .display(),
+                                ));
+                            }
+                            Ok(Value::String(evaluated_args[0].to_string()))
+                        }
+                        "abs" => {
+                            if evaluated_args.len() != 1 {
+                                return Err(ControlFlow::Error(
+                                    "abs() requires one argument".to_string(),
+                                ));
+                            }
+
+                            match &evaluated_args[0] {
+                                Value::Number(n) => Ok(Value::Number(n.abs())),
+                                _ => Err(ControlFlow::Error("abs() requires a number".to_string())),
+                            }
+                        }
+
+                        "max" => {
+                            if evaluated_args.len() != 2 {
+                                return Err(ControlFlow::Error(
+                                    "max() requires two arguments".to_string(),
+                                ));
+                            }
+
+                            match (&evaluated_args[0], &evaluated_args[1]) {
+                                (Value::Number(a), Value::Number(b)) => {
+                                    Ok(Value::Number(a.max(*b)))
                                 }
-                                match &evaluated_args[0] {
-                                    Value::Number(n) => Ok(Value::Number(*n)),
-                                    Value::Boolean(b) => {
-                                        Ok(Value::Number(if *b { 1.0 } else { 0.0 }))
-                                    }
-                                    Value::Nil => Ok(Value::Number(0.0)),
-                                    Value::String(s) => {
-                                        if let Ok(n) = s.trim().parse::<f64>() {
-                                            Ok(Value::Number(n))
-                                        } else {
-                                            Err(ControlFlow::Error(DiagnosticError::new(
-                                        &format!("تعذر تحويل النص \"{}\" إلى رقم.", s),
-                                        &format!("Could not convert string \"{}\" to number.", s)
-                                    ).display()))
-                                        }
-                                    }
-                                    other => {
-                                        let t = other.type_of();
+                                _ => Err(ControlFlow::Error("max() requires numbers".to_string())),
+                            }
+                        }
+
+                        "min" => {
+                            if evaluated_args.len() != 2 {
+                                return Err(ControlFlow::Error(
+                                    "min() requires two arguments".to_string(),
+                                ));
+                            }
+
+                            match (&evaluated_args[0], &evaluated_args[1]) {
+                                (Value::Number(a), Value::Number(b)) => {
+                                    Ok(Value::Number(a.min(*b)))
+                                }
+                                _ => Err(ControlFlow::Error("min() requires numbers".to_string())),
+                            }
+                        }
+
+                        "version" => Ok(Value::String("FSL 0.2.3".to_string())),
+
+                        "number" => {
+                            if evaluated_args.len() != 1 {
+                                return Err(ControlFlow::Error(
+                                    DiagnosticError::new(
+                                        "دالة رقم تحتاج إلى وسيط واحد.",
+                                        "number() function requires exactly one argument.",
+                                    )
+                                    .display(),
+                                ));
+                            }
+                            match &evaluated_args[0] {
+                                Value::Number(n) => Ok(Value::Number(*n)),
+                                Value::Boolean(b) => Ok(Value::Number(if *b { 1.0 } else { 0.0 })),
+                                Value::Nil => Ok(Value::Number(0.0)),
+                                Value::String(s) => {
+                                    if let Ok(n) = s.trim().parse::<f64>() {
+                                        Ok(Value::Number(n))
+                                    } else {
                                         Err(ControlFlow::Error(
                                             DiagnosticError::new(
-                                                &format!("لا يمكن تحويل نوع ({}) إلى رقم.", t),
-                                                &format!("Cannot convert type ({}) to number.", t),
+                                                &format!("تعذر تحويل النص \"{}\" إلى رقم.", s),
+                                                &format!(
+                                                    "Could not convert string \"{}\" to number.",
+                                                    s
+                                                ),
                                             )
                                             .display(),
                                         ))
                                     }
                                 }
+                                other => {
+                                    let t = other.type_of();
+                                    Err(ControlFlow::Error(
+                                        DiagnosticError::new(
+                                            &format!("لا يمكن تحويل نوع ({}) إلى رقم.", t),
+                                            &format!("Cannot convert type ({}) to number.", t),
+                                        )
+                                        .display(),
+                                    ))
+                                }
                             }
-                            _ => Err(ControlFlow::Error(format!(
-                                "دالة مدمجة غير معرفة: {}",
-                                name
-                            ))),
                         }
-                    }
+                        _ => Err(ControlFlow::Error(format!(
+                            "دالة مدمجة غير معرفة: {}",
+                            name
+                        ))),
+                    },
                     Value::Function {
                         params,
                         body,

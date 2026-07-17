@@ -1,3 +1,4 @@
+use crate::runtime::stdlib;
 use std::cell::RefCell;
 use std::rc::Rc;
 use crate::compiler::ast::expression::Expr;
@@ -36,5 +37,15 @@ impl Interpreter {
         // استعادة البيئة السابقة بعد الانتهاء بنجاح
         self.environment = previous;
         Ok(())
+    }
+
+
+    pub fn call_stdlib(
+        &self,
+        module: &str,
+        function: &str,
+        args: Vec<String>,
+    ) -> Option<String> {
+        stdlib::call(module, function, args)
     }
 }

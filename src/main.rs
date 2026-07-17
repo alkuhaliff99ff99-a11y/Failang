@@ -6,6 +6,7 @@ mod cli;
 mod compiler;
 mod repl;
 mod runtime;
+mod stdlib;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
