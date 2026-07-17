@@ -31,3 +31,44 @@ fn test_collection_builtins_bilingual() {
         "#,
     );
 }
+
+#[test]
+fn test_text_and_conversion_builtins_bilingual() {
+    run_failang(
+        r#"
+        print str(123)
+        print نص(456)
+
+        print number("789")
+        print رقم("321")
+
+        print replace("Failang","F","L")
+        print استبدل("لغة فيصل","فيصل","FSL")
+
+        print split("a,b,c",",")
+        print تقسيم("x-y-z","-")
+
+        print concat("Fail","ang")
+        print دمج("F","SL")
+
+        print trim("  hello  ")
+        print قص_فراغات("  مرحبا  ")
+        "#,
+    );
+}
+
+#[test]
+fn test_array_mutation_builtins_bilingual() {
+    run_failang(
+        r#"
+        print reverse([1,2,3])
+        print عكس([10,20,30])
+
+        print is_empty([])
+        print فارغ([])
+
+        print pop([1,2,3])
+        print احذف([4,5,6])
+        "#,
+    );
+}
