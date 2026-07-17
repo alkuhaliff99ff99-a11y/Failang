@@ -32,9 +32,7 @@ pub fn execute(args: &[String]) {
         }
 
         "--version" | "-v" => {
-            println!("Failang v0.2.2");
-            println!("Fast • Safe • Logical");
-            println!("Arabic / English Programming Language");
+            crate::cli::version::show();
         }
 
         "new" => {
