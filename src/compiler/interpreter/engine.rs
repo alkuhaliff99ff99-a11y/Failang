@@ -39,6 +39,10 @@ impl Interpreter {
         env.define("replace".to_string(), Value::Builtin("replace".to_string()));
         env.define("قطع".to_string(), Value::Builtin("slice".to_string()));
         env.define("slice".to_string(), Value::Builtin("slice".to_string()));
+        env.define("تقسيم".to_string(), Value::Builtin("split".to_string()));
+        env.define("split".to_string(), Value::Builtin("split".to_string()));
+        env.define("دمج".to_string(), Value::Builtin("concat".to_string()));
+        env.define("concat".to_string(), Value::Builtin("concat".to_string()));
         Self { environment: env }
     }
 
@@ -526,6 +530,34 @@ impl Interpreter {
                                         ))
                                     }
                                 }
+                            }
+                            "split" => {
+                                if evaluated_args.len() != 2 {
+                                    return Err(ControlFlow::Error("split يحتاج نصاً وفاصلًا".to_string()));
+                                }
+
+                                match (&evaluated_args[0], &evaluated_args[1]) {
+                                    (Value::String(text), Value::String(separator)) => {
+                                        Ok(Value::Array(
+                                            text.split(separator)
+                                                .map(|s| Value::String(s.to_string()))
+                                                .collect()
+                                        ))
+                                    }
+                                    _ => Err(ControlFlow::Error("split يعمل مع النصوص فقط".to_string()))
+                                }
+                            }
+                            "concat" => {
+                                let mut result = String::new();
+
+                                for arg in evaluated_args {
+                                    match arg {
+                                        Value::String(s) => result.push_str(&s),
+                                        _ => return Err(ControlFlow::Error("concat يعمل مع النصوص فقط".to_string())),
+                                    }
+                                }
+
+                                Ok(Value::String(result))
                             }
                             "replace" => {
                                 if evaluated_args.len() != 3 {
