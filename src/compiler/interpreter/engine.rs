@@ -35,6 +35,10 @@ impl Interpreter {
         env.define("last".to_string(), Value::Builtin("last".to_string()));
         env.define("يحتوي".to_string(), Value::Builtin("contains".to_string()));
         env.define("contains".to_string(), Value::Builtin("contains".to_string()));
+        env.define("استبدل".to_string(), Value::Builtin("replace".to_string()));
+        env.define("replace".to_string(), Value::Builtin("replace".to_string()));
+        env.define("قطع".to_string(), Value::Builtin("slice".to_string()));
+        env.define("slice".to_string(), Value::Builtin("slice".to_string()));
         Self { environment: env }
     }
 
@@ -521,6 +525,41 @@ impl Interpreter {
                                             .display(),
                                         ))
                                     }
+                                }
+                            }
+                            "replace" => {
+                                if evaluated_args.len() != 3 {
+                                    return Err(ControlFlow::Error("replace يحتاج نصاً ونص البحث والنص البديل".to_string()));
+                                }
+
+                                match (&evaluated_args[0], &evaluated_args[1], &evaluated_args[2]) {
+                                    (Value::String(text), Value::String(old), Value::String(new)) => {
+                                        Ok(Value::String(text.replace(old, new)))
+                                    }
+                                    _ => Err(ControlFlow::Error("replace يعمل مع النصوص فقط".to_string()))
+                                }
+                            }
+                            "slice" => {
+                                if evaluated_args.len() != 3 {
+                                    return Err(ControlFlow::Error("slice يحتاج قيمة وبداية ونهاية".to_string()));
+                                }
+
+                                match &evaluated_args[0] {
+                                    Value::String(text) => {
+                                        let start = match &evaluated_args[1] {
+                                            Value::Number(n) => *n as usize,
+                                            _ => return Err(ControlFlow::Error("بداية القطع يجب أن تكون رقماً".to_string()))
+                                        };
+
+                                        let end = match &evaluated_args[2] {
+                                            Value::Number(n) => *n as usize,
+                                            _ => return Err(ControlFlow::Error("نهاية القطع يجب أن تكون رقماً".to_string()))
+                                        };
+
+                                        let result: String = text.chars().skip(start).take(end - start).collect();
+                                        Ok(Value::String(result))
+                                    }
+                                    _ => Err(ControlFlow::Error("slice يعمل مع النصوص فقط".to_string()))
                                 }
                             }
                             _ => Err(ControlFlow::Error(format!(
