@@ -43,6 +43,8 @@ impl Interpreter {
         env.define("split".to_string(), Value::Builtin("split".to_string()));
         env.define("دمج".to_string(), Value::Builtin("concat".to_string()));
         env.define("concat".to_string(), Value::Builtin("concat".to_string()));
+        env.define("قص_فراغات".to_string(), Value::Builtin("trim".to_string()));
+        env.define("trim".to_string(), Value::Builtin("trim".to_string()));
         Self { environment: env }
     }
 
@@ -529,6 +531,18 @@ impl Interpreter {
                                             .display(),
                                         ))
                                     }
+                                }
+                            }
+                            "trim" => {
+                                if evaluated_args.len() != 1 {
+                                    return Err(ControlFlow::Error("trim يحتاج نصاً واحداً".to_string()));
+                                }
+
+                                match &evaluated_args[0] {
+                                    Value::String(text) => {
+                                        Ok(Value::String(text.trim().to_string()))
+                                    }
+                                    _ => Err(ControlFlow::Error("trim يعمل مع النصوص فقط".to_string()))
                                 }
                             }
                             "split" => {
