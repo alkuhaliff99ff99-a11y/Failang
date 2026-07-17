@@ -106,9 +106,7 @@ impl Lexer {
         keywords.insert("ارجع".to_string(), TokenKind::Return);
 
         // كلمات المقارنة الطبيعية في Failang
-        keywords.insert("أكبر".to_string(), TokenKind::Greater);
         keywords.insert("اصغر".to_string(), TokenKind::Less);
-        keywords.insert("أصغر".to_string(), TokenKind::Less);
         keywords.insert("يساوي".to_string(), TokenKind::EqualEqual);
         keywords.insert("مساوي".to_string(), TokenKind::EqualEqual);
         keywords.insert("لا".to_string(), TokenKind::BangEqual);

@@ -59,6 +59,16 @@ impl Interpreter {
         env.define("reverse".to_string(), Value::Builtin("reverse".to_string()));
         env.define("فارغ".to_string(), Value::Builtin("is_empty".to_string()));
         env.define("is_empty".to_string(), Value::Builtin("is_empty".to_string()));
+        env.define("مطلق".to_string(), Value::Builtin("abs".to_string()));
+        env.define("abs".to_string(), Value::Builtin("abs".to_string()));
+        env.define("أكبر".to_string(), Value::Builtin("max".to_string()));
+        env.define("max".to_string(), Value::Builtin("max".to_string()));
+        env.define("أصغر".to_string(), Value::Builtin("min".to_string()));
+        env.define("min".to_string(), Value::Builtin("min".to_string()));
+        env.define("جذر".to_string(), Value::Builtin("sqrt".to_string()));
+        env.define("sqrt".to_string(), Value::Builtin("sqrt".to_string()));
+        env.define("قوة".to_string(), Value::Builtin("pow".to_string()));
+        env.define("pow".to_string(), Value::Builtin("pow".to_string()));
         Self { environment: env }
     }
 
@@ -545,6 +555,36 @@ impl Interpreter {
                                             .display(),
                                         ))
                                     }
+                                }
+                            }
+                            "abs" => {
+                                match evaluated_args.as_slice() {
+                                    [Value::Number(n)] => Ok(Value::Number(n.abs())),
+                                    _ => Err(ControlFlow::Error("مطلق يحتاج رقماً واحداً.".to_string())),
+                                }
+                            }
+                            "max" => {
+                                match evaluated_args.as_slice() {
+                                    [Value::Number(a), Value::Number(b)] => Ok(Value::Number(a.max(*b))),
+                                    _ => Err(ControlFlow::Error("أكبر يحتاج رقمين.".to_string())),
+                                }
+                            }
+                            "min" => {
+                                match evaluated_args.as_slice() {
+                                    [Value::Number(a), Value::Number(b)] => Ok(Value::Number(a.min(*b))),
+                                    _ => Err(ControlFlow::Error("أصغر يحتاج رقمين.".to_string())),
+                                }
+                            }
+                            "sqrt" => {
+                                match evaluated_args.as_slice() {
+                                    [Value::Number(n)] => Ok(Value::Number(n.sqrt())),
+                                    _ => Err(ControlFlow::Error("جذر يحتاج رقماً واحداً.".to_string())),
+                                }
+                            }
+                            "pow" => {
+                                match evaluated_args.as_slice() {
+                                    [Value::Number(a), Value::Number(b)] => Ok(Value::Number(a.powf(*b))),
+                                    _ => Err(ControlFlow::Error("قوة تحتاج رقمين.".to_string())),
                                 }
                             }
                             "pop" => {
