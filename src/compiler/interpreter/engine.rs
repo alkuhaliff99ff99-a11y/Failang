@@ -45,6 +45,10 @@ impl Interpreter {
         env.define("concat".to_string(), Value::Builtin("concat".to_string()));
         env.define("قص_فراغات".to_string(), Value::Builtin("trim".to_string()));
         env.define("trim".to_string(), Value::Builtin("trim".to_string()));
+        env.define("يبدأ_بـ".to_string(), Value::Builtin("starts_with".to_string()));
+        env.define("starts_with".to_string(), Value::Builtin("starts_with".to_string()));
+        env.define("ينتهي_بـ".to_string(), Value::Builtin("ends_with".to_string()));
+        env.define("ends_with".to_string(), Value::Builtin("ends_with".to_string()));
         Self { environment: env }
     }
 
@@ -531,6 +535,23 @@ impl Interpreter {
                                             .display(),
                                         ))
                                     }
+                                }
+                            }
+                            "starts_with" | "ends_with" => {
+                                if evaluated_args.len() != 2 {
+                                    return Err(ControlFlow::Error("الدالة تحتاج نصين".to_string()));
+                                }
+
+                                match (&evaluated_args[0], &evaluated_args[1]) {
+                                    (Value::String(text), Value::String(part)) => {
+                                        let result = if name == "starts_with" {
+                                            text.starts_with(part)
+                                        } else {
+                                            text.ends_with(part)
+                                        };
+                                        Ok(Value::Boolean(result))
+                                    }
+                                    _ => Err(ControlFlow::Error("الدالة تعمل مع النصوص فقط".to_string()))
                                 }
                             }
                             "trim" => {
