@@ -145,12 +145,13 @@ impl Lexer {
                 // إذا وجدنا سطر فارغ تماماً أو تعليق، لا نغير مستويات الـ Indent
                 if self.is_at_end()
                     || self.peek() == '\n'
+                    || self.peek() == '#'
                     || (self.peek() == '/' && self.peek_next() == '/')
                 {
                     self.at_line_start = true;
-                    if !self.is_at_end() {
+                    if !self.is_at_end() && self.peek() == '\n' {
                         self.advance();
-                    } // لتجاوز السطر الجديد الفارغ
+                    } // لتجاوز السطر الجديد الفارغ بأمان
                     continue;
                 }
 
@@ -276,6 +277,11 @@ impl Lexer {
                     }
                 } else {
                     self.add_token(TokenKind::Slash);
+                }
+            }
+            '#' => {
+                while self.peek() != '\n' && !self.is_at_end() {
+                    self.advance();
                 }
             }
             ' ' | '\r' | '\t' | '\u{200E}' | '\u{200F}' | '\u{202B}' | '\u{202C}' => {}
