@@ -1,4 +1,3 @@
-# Failang Core Standard Library
 
 دالة نوع_القيمة(قيمة):
     أرجع نوع(قيمة)
