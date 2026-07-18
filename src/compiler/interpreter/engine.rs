@@ -1,3 +1,4 @@
+use crate::runtime::stdlib::load_stdlib;
 use crate::compiler::interpreter::environment::Environment;
 use crate::compiler::interpreter::value::Value;
 use crate::compiler::lexer::TokenKind;
@@ -71,7 +72,11 @@ impl Interpreter {
         env.define("max".to_string(), Value::Builtin("max".to_string()));
         env.define("أصغر_قيمة".to_string(), Value::Builtin("min".to_string()));
         env.define("min".to_string(), Value::Builtin("min".to_string()));
-        Self { environment: env }
+        return Self { environment: env };
+    }
+
+    pub fn load_standard_library(&mut self) {
+        load_stdlib(self);
     }
 
     pub fn interpret(&mut self, statements: &[Stmt]) -> Result<(), String> {

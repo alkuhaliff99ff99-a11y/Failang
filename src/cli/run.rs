@@ -14,5 +14,6 @@ pub fn run_file(path: &str) {
     });
 
     let mut interpreter = Interpreter::new();
+    interpreter.load_standard_library();
     crate::repl::execute(&source, &mut interpreter);
 }
