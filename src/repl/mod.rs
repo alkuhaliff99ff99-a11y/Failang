@@ -1,4 +1,4 @@
-use crate::compiler::interpreter::Interpreter;
+use crate::compiler::interpreter::engine::Interpreter;
 use crate::compiler::lexer::Lexer;
 use crate::compiler::parser::Parser;
 use crate::diagnostics::error::DiagnosticError;

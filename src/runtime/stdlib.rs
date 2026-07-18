@@ -1,7 +1,7 @@
 use std::fs;
 use std::path::Path;
 
-use crate::compiler::interpreter::Interpreter;
+use crate::compiler::interpreter::engine::Interpreter;
 use crate::repl::execute;
 
 pub fn load_stdlib(interpreter: &mut Interpreter) {
